@@ -6,6 +6,7 @@ import displayBarChart from "./components/barchart.js";
 import displayLineChart from "./components/linechart.js";
 import displayScatterPlot from "./components/scatterplot.js";
 import { initCountryCodeConversionMaps } from "./utils/convertCountryCode.js";
+import filterUnusedDisasters from "./utils/filterUnusedDisasters.js";
 
 Promise.all([
     loadExcelAsJSON('./data/em-dat.xlsx'),
@@ -21,8 +22,10 @@ function startApp([
 ]
 ) {
     document.getElementById("loading-screen").style.display = "none";
-    
-    appState.data.disasterData = disasterData;
+
+    const filteredDisasterData = filterUnusedDisasters(disasterData)
+
+    appState.data.disasterData = filteredDisasterData;
     appState.data.countryCodeData = countryCodeData;
     appState.data.countryShapeData = countryShapeData;
     initCountryCodeConversionMaps()

@@ -1,9 +1,8 @@
 import appState from "../appState.js";
-import { convertIdToName } from "../utils/convertCountryCode.js";
 import { updateDisplay, addDisplayUpdateStep } from "../utils/updateDisplay.js";
 
 export default function displayMap() {
-    const { countryShapeData } = appState.data;
+    const { countryShapeData, disasterData } = appState.data;
 
     // get map svg container and its width and height
     const svg = d3.select('#map-svg');
@@ -126,6 +125,26 @@ export default function displayMap() {
             const screenArea = path.area(d.largestPolygon);
             return screenArea > 1500 ? 1 : 0;
         });
+
+
+    const disasterColor = d3.scaleOrdinal()
+        .domain(["Storm", "Earthquake", "Drought"])
+        .range(["#1f77b4", "#d62728", "#2ca02c"]); // blue, red, green
+
+    const disastersWithCoords = disasterData.filter(d => d.Latitude && d.Longitude);
+
+    mapGroup.selectAll("circle.disaster")
+        .data(disastersWithCoords)
+        .enter()
+        .append("circle")
+        .attr("class", "disaster")
+        .attr("cx", d => projection([+d.Longitude, +d.Latitude])[0])
+        .attr("cy", d => projection([+d.Longitude, +d.Latitude])[1])
+        .attr("r", 3)
+        .attr("fill", d => disasterColor(d["Disaster Type"]))
+        .attr("opacity", 0.6)
+        .attr("stroke", "#333")
+        .attr("stroke-width", 0.2);
 
     // create zoom behavior generator
     const zoom = d3.zoom()
