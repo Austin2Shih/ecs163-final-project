@@ -7,21 +7,28 @@
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
+    <div id="loading-screen">
+        <div class="loader">Loading data...</div>
+    </div>
     <div class="container">
         <div class="map-container">
             <svg id="map-svg"></svg>
         </div>
         <div class="details-container">
-            <div class="bar-chart-container">
-                <svg id="bar-chart-svg"></svg>
-            </div>
             <div class="line-chart-container">
                 <svg id="line-chart-svg"></svg>
+            </div>
+            <div class="scatter-plot-container">
+                <svg id="scatter-plot-svg"></svg>
+            </div>
+            <div class="bar-chart-container">
+                <svg id="bar-chart-svg"></svg>
             </div>
         </div>
     </div>
 	<script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/topojson-client@3"></script>
-	<script src="main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+	<script type="module" src="main.js"></script>
 </body>
 </html>

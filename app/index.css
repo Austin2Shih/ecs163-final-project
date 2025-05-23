@@ -39,11 +39,36 @@ svg {
     border-right: solid 1px black;
 }
 
-.bar-chart-container, .line-chart-container {
-    height: 50%;
+.line-chart-container, .scatter-plot-container, .bar-chart-container {
+    height: calc(100% / 3);
     padding: 16px;
 }
 
-.bar-chart-container {
+.line-chart-container, .scatter-plot-container {
     border-bottom: solid 1px black;
+}
+
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    color: #333;
+    z-index: 9999;
+}
+
+.loader {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
 }
