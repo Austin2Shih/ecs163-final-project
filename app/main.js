@@ -5,6 +5,7 @@ import displayMap from "./components/map.js";
 import displayBarChart from "./components/barchart.js";
 import displayLineChart from "./components/linechart.js";
 import displayScatterPlot from "./components/scatterplot.js";
+import { initCountryCodeConversionMaps } from "./utils/convertCountryCode.js";
 
 Promise.all([
     loadExcelAsJSON('./data/em-dat.xlsx'),
@@ -16,13 +17,15 @@ Promise.all([
 function startApp([
     disasterData, 
     countryCodeData, 
-    countryShapeData]
+    countryShapeData
+]
 ) {
     document.getElementById("loading-screen").style.display = "none";
     
     appState.data.disasterData = disasterData;
     appState.data.countryCodeData = countryCodeData;
     appState.data.countryShapeData = countryShapeData;
+    initCountryCodeConversionMaps()
 
     displayMap();
     displayLineChart();

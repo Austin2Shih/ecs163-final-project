@@ -1,4 +1,6 @@
 import appState from "../appState.js";
+import { convertIdToName } from "../utils/convertCountryCode.js";
+import { updateDisplay, addDisplayUpdateStep } from "../utils/updateDisplay.js";
 
 export default function displayMap() {
     const { countryShapeData } = appState.data;
@@ -16,7 +18,7 @@ export default function displayMap() {
     // convert TopoJSON to GeoJSON for countries
     const countries = topojson.feature(countryShapeData, countryShapeData.objects.countries);
 
-    // filter out Antarctica (since it's irrelevant in this map)
+    // filter out antarctica
     countries.features = countries.features.filter(
         d => d.id !== 'ATA' && d.properties.name !== 'Antarctica'
     );
@@ -68,31 +70,53 @@ export default function displayMap() {
         .style("font-size", "1.5rem")
         .text("Natural Disasters");
 
-    // draw countries on the map
-    mapGroup
-        .selectAll("path")
-        .data(countries.features)
+    const countryGroups = mapGroup
+        .selectAll("g.country")
+        .data(countries.features, d => +d.id)
         .enter()
+        .append("g")
+        .attr("class", "country")
+        .style("cursor", "pointer")
+        .style("opacity", d => {
+            if (appState.selectedCountry === null) return 1;
+            return +d.id === appState.selectedCountry ? 1 : 0.3;
+        })
+        .on("click", (_, d) => {
+            const clickedCountryId = +d.id;
+            if (appState.selectedCountry === clickedCountryId) {
+                appState.selectedCountry = null;
+            } else {
+                appState.selectedCountry = clickedCountryId;
+            }
+
+            updateDisplay(); // Triggers full redraw
+        });
+
+    // draw countries on the map
+    addDisplayUpdateStep(() => {
+        countryGroups.selectAll("path")
+            .attr("stroke", d => +d.id === appState.selectedCountry ? "yellow" : "black")  
+        
+        countryGroups
+            .style("opacity", d => {
+                if (appState.selectedCountry === null) return 1;
+                return +d.id === appState.selectedCountry ? 1 : 0.3;
+            })  
+    })
+
+    // Draw path within group
+    countryGroups
         .append("path")
         .attr("d", path)
         .attr("fill", "#ddd")
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.5)
-        .style("opacity", 1)
+        .attr("stroke", d => +d.id === appState.selectedCountry ? "yellow" : "black")
+        .attr("stroke-width", 0.5);
 
-    // draw all country labels at the centroid of the largest polygon associated with the country
-    // if not part of the selected country, then set the opacity lower to highlight the selected one
-    // also, only show the text if the country drawn is big enough on the screen to prevent clutter
-    mapGroup.selectAll("text")
-        .data(countries.features, d => +d.id)   
-        .enter()
+    // Draw label within group
+    countryGroups
         .append("text")
-        .attr("x", d => {
-            return isNaN(d.centroid[0]) ? 0 : d.centroid[0];
-        })
-        .attr("y", d => {
-            return isNaN(d.centroid[1]) ? 0 : d.centroid[1];
-        })
+        .attr("x", d => isNaN(d.centroid[0]) ? 0 : d.centroid[0])
+        .attr("y", d => isNaN(d.centroid[1]) ? 0 : d.centroid[1])
         .text(d => d.properties.name)
         .attr("fill", "black")
         .attr("font-size", `12px`)
