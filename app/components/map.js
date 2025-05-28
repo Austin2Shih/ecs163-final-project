@@ -1,5 +1,6 @@
 import appState from "../appState.js";
 import { updateDisplay, addDisplayUpdateStep } from "../utils/updateDisplay.js";
+import displayBarChart from "./barchart.js"; // Import your bar chart component
 
 export default function displayMap() {
     const { countryShapeData, disasterData } = appState.data;
@@ -69,6 +70,101 @@ export default function displayMap() {
         .style("font-size", "1.5rem")
         .text("Natural Disasters");
 
+    // Create chart container area (positioned on the right side)
+    const chartContainer = svg.append("g")
+        .attr("class", "chart-overlay")
+        .attr("transform", `translate(${width - 500}, ${margin.top})`)
+        .style("opacity", 0);
+
+    // Add background for chart area
+    chartContainer.append("rect")
+        .attr("width", 480)
+        .attr("height", 400)
+        .attr("fill", "white")
+        .attr("stroke", "#333")
+        .attr("stroke-width", 2)
+        .attr("rx", 8)
+        .style("filter", "drop-shadow(0 4px 8px rgba(0,0,0,0.2))");
+
+    // Add close button for chart
+    const closeButton = chartContainer.append("g")
+        .attr("class", "close-button")
+        .attr("transform", "translate(450, 15)")
+        .style("cursor", "pointer")
+        .on("click", () => {
+            hideChart();
+            appState.selectedCountry = null;
+            updateDisplay();
+        });
+
+    closeButton.append("circle")
+        .attr("r", 12)
+        .attr("fill", "#ff4757")
+        .attr("stroke", "white")
+        .attr("stroke-width", 2);
+
+    closeButton.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .style("fill", "white")
+        .style("font-weight", "bold")
+        .style("font-size", "14px")
+        .text("×");
+
+    // Create SVG element for the bar chart within the chart container
+    const chartSvg = chartContainer.append("svg")
+        .attr("id", "embedded-chart")
+        .attr("x", 15)
+        .attr("y", 35)
+        .attr("width", 450)
+        .attr("height", 350);
+
+    // Variable to store the current chart instance
+    let currentChart = null;
+
+    // Function to show chart for selected country
+    function showChartForCountry(countryFeature) {
+        const countryName = countryFeature.properties.name;
+        const countryId = countryFeature.id;
+        
+        // Configuration for the embedded chart
+        const chartConfig = {
+            width: 450,
+            height: 350,
+            margin: { top: 30, right: 80, bottom: 60, left: 70 },
+            showTitle: true,
+            title: `${countryName} - Disaster Costs`
+        };
+
+        // Clear previous chart if exists
+        if (currentChart) {
+            currentChart.clearChart();
+        }
+
+        // Create new chart instance
+        currentChart = displayBarChart('#embedded-chart', countryName, chartConfig);
+        
+        // Show chart container with animation
+        chartContainer.transition()
+            .duration(500)
+            .style("opacity", 1);
+    }
+
+    // Function to hide chart
+    function hideChart() {
+        chartContainer.transition()
+            .duration(300)
+            .style("opacity", 0);
+        
+        // Clear chart after hiding
+        setTimeout(() => {
+            if (currentChart) {
+                currentChart.clearChart();
+                currentChart = null;
+            }
+        }, 300);
+    }
+
     const countryGroups = mapGroup
         .selectAll("g.country")
         .data(countries.features, d => +d.id)
@@ -84,8 +180,10 @@ export default function displayMap() {
             const clickedCountryId = +d.id;
             if (appState.selectedCountry === clickedCountryId) {
                 appState.selectedCountry = null;
+                hideChart();
             } else {
                 appState.selectedCountry = clickedCountryId;
+                showChartForCountry(d);
             }
 
             updateDisplay(); // Triggers full redraw
@@ -125,7 +223,6 @@ export default function displayMap() {
             const screenArea = path.area(d.largestPolygon);
             return screenArea > 1500 ? 1 : 0;
         });
-
 
     const disasterColor = d3.scaleOrdinal()
         .domain(["Storm", "Earthquake", "Drought"])
@@ -168,4 +265,15 @@ export default function displayMap() {
 
     // add zoom
     svg.call(zoom);
+
+    // Handle appState updates for chart
+    addDisplayUpdateStep(() => {
+        if (appState.selectedCountry) {
+            const selectedFeature = countries.features.find(f => +f.id === appState.selectedCountry);
+            if (selectedFeature && currentChart) {
+                // Update existing chart if country is already selected
+                currentChart.updateChart(selectedFeature.properties.name);
+            }
+        }
+    });
 }
