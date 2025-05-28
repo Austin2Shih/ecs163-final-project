@@ -178,21 +178,47 @@ export default function displayLineChart(selectedCountry) {
     .style('border', '1px solid #ddd')
     .style('padding', '10px')
     .style('border-radius', '5px')
-    .style('pointer-events', 'none');
+    .style('pointer-events', 'none')
+    .style('max-width', '300px')
+    .style('word-wrap', 'break-word');
 
   // Add hover effects
   svg
     .selectAll('.dot')
     .on('mouseover', (event, d) => {
       tooltip.transition().duration(200).style('opacity', 0.9);
-      tooltip
-        .html(
-          `Year: ${d.year.getFullYear()}<br/>Temperature: ${d.meanTemp.toFixed(
-            2
-          )}°C`
-        )
-        .style('left', event.pageX + 10 + 'px')
-        .style('top', event.pageY - 28 + 'px');
+
+      tooltip.html(
+        `Year: ${d.year.getFullYear()}<br/>Temperature: ${d.meanTemp.toFixed(
+          2
+        )}°C`
+      );
+
+      // Calculate tooltip position to prevent going off-screen
+      const tooltipNode = tooltip.node();
+      const tooltipRect = tooltipNode.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Calculate initial position
+      let left = event.pageX + 10;
+      let top = event.pageY - 28;
+
+      // Adjust horizontal position if needed
+      if (left + tooltipRect.width > viewportWidth - 10) {
+        left = event.pageX - tooltipRect.width - 10;
+      }
+
+      // Adjust vertical position if needed
+      if (top + tooltipRect.height > viewportHeight - 10) {
+        top = event.pageY - tooltipRect.height - 10;
+      }
+
+      // Ensure tooltip doesn't go off the left or top of the screen
+      left = Math.max(10, left);
+      top = Math.max(10, top);
+
+      tooltip.style('left', left + 'px').style('top', top + 'px');
     })
     .on('mouseout', () => {
       tooltip.transition().duration(500).style('opacity', 0);
