@@ -18,7 +18,7 @@ export default function displayBarChart(selectedCountry) {
     console.log('Name:', selectedCountryName, '-> ISO2:', selectedCountryISO2);
     console.log('ISO2:', selectedCountryISO2, '-> ISO3:', selectedCountryISO3);
 
-    // Filter using ISO3 like the scatter plot does
+    //filter using iso3 
     let countryDisasterData = [];
     if (selectedCountry && disasterData) {
         countryDisasterData = disasterData.filter(d => d.ISO === selectedCountryISO3);
