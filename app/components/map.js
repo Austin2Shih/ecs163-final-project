@@ -1,9 +1,14 @@
 import appState from '../appState.js';
-import { updateDisplay, addDisplayUpdateStep, addYearDisplayUpdateStep } from '../utils/updateDisplay.js';
+import {
+  updateDisplay,
+  addDisplayUpdateStep,
+  addYearDisplayUpdateStep,
+} from '../utils/updateDisplay.js';
 import { convertIdToName } from '../utils/convertCountryCode.js';
 
 export default function displayMap() {
-  const { countryShapeData, disasterData, hurricaneData } = appState.data;
+  const { countryShapeData, disasterData, hurricaneData, floodData } =
+    appState.data;
 
   // get map svg container and its width and height
   const svg = d3.select('#map-svg');
@@ -11,7 +16,7 @@ export default function displayMap() {
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 
   // create margins
-  const margin = { top: 70, right: 0, bottom: 50, left: 0 };
+  const margin = { top: 120, right: 0, bottom: 120, left: 0 };
   const contentWidth = width - margin.left - margin.right;
   const contentHeight = height - margin.top - margin.bottom;
 
@@ -73,20 +78,30 @@ export default function displayMap() {
     .append('text')
     .attr('id', 'map-title')
     .attr('x', width / 2)
-    .attr('y', margin.top * 2 / 3)
+    .attr('y', margin.top / 2)
     .attr('text-anchor', 'middle')
     .style('font-size', '1.5rem')
-    .text(`Natural Disasters - Year ${appState.selectedYear} ${convertIdToName(appState.selectedCountry) || ''}`);
+    .text(
+      `Natural Disasters - Year ${appState.selectedYear} ${
+        convertIdToName(appState.selectedCountry) || ''
+      }`
+    );
 
-    addYearDisplayUpdateStep(() => {
-        d3.select('#map-title')
-        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
-    });
+  addYearDisplayUpdateStep(() => {
+    d3.select('#map-title').text(
+      `Natural Disasters - Year ${appState.selectedYear || ''} ${
+        convertIdToName(appState.selectedCountry) || ''
+      }`
+    );
+  });
 
-    addDisplayUpdateStep(() => {
-        d3.select('#map-title')
-        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
-    });
+  addDisplayUpdateStep(() => {
+    d3.select('#map-title').text(
+      `Natural Disasters - Year ${appState.selectedYear || ''} ${
+        convertIdToName(appState.selectedCountry) || ''
+      }`
+    );
+  });
 
   const countryGroups = mapGroup
     .selectAll('g.country')
@@ -149,10 +164,10 @@ export default function displayMap() {
       return screenArea > 1500 ? 1 : 0;
     });
 
-//   const disasterColor = d3
-//     .scaleOrdinal()
-//     .domain(['Storm', 'Earthquake', 'Drought'])
-//     .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
+  //   const disasterColor = d3
+  //     .scaleOrdinal()
+  //     .domain(['Hurricane', 'Earthquake', 'Flood'])
+  //     .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
 
   const earthquakesWithCoords = disasterData.filter(
     (d) => d.Latitude && d.Longitude && d['Disaster Type'] === 'Earthquake'
@@ -160,7 +175,12 @@ export default function displayMap() {
 
   mapGroup
     .selectAll('circle.earthquake')
-    .data(earthquakesWithCoords.filter(d => (!appState.selectedYear || +d['Start Year'] === +appState.selectedYear)))
+    .data(
+      earthquakesWithCoords.filter(
+        (d) =>
+          !appState.selectedYear || +d['Start Year'] === +appState.selectedYear
+      )
+    )
     .enter()
     .append('circle')
     .attr('class', 'earthquake')
@@ -175,7 +195,11 @@ export default function displayMap() {
 
   mapGroup
     .selectAll('circle.hurricane')
-    .data(hurricaneData.filter(d => !appState.selectedYear || +d.year === +appState.selectedYear))
+    .data(
+      hurricaneData.filter(
+        (d) => !appState.selectedYear || +d.year === +appState.selectedYear
+      )
+    )
     .enter()
     .append('circle')
     .attr('class', 'hurricane')
@@ -188,66 +212,129 @@ export default function displayMap() {
     .attr('stroke', '#000')
     .attr('stroke-width', 0.3);
 
-
-addYearDisplayUpdateStep(() => {
-    const filteredEarthquakes = disasterData.filter(
+  // Add flood visualization
+  mapGroup
+    .selectAll('circle.flood')
+    .data(
+      floodData.filter(
         (d) =>
-        (!appState.selectedYear || +d['Start Year'] === +appState.selectedYear) &&
+          !appState.selectedYear || +d['Start Year'] === +appState.selectedYear
+      )
+    )
+    .enter()
+    .append('circle')
+    .attr('class', 'flood')
+    .attr('pointer-events', 'none')
+    .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+    .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
+    .attr('r', (d) => {
+      // Scale radius based on total affected population
+      const totalAffected = parseInt(d['Total Affected']) || 0;
+      return Math.max(3, Math.min(15, Math.sqrt(totalAffected) * 0.001));
+    })
+    .attr('fill', '#2ca02c') // Green color for floods
+    .attr('opacity', 0.7)
+    .attr('stroke', '#000')
+    .attr('stroke-width', 0.2);
+
+  addYearDisplayUpdateStep(() => {
+    const filteredEarthquakes = disasterData.filter(
+      (d) =>
+        (!appState.selectedYear ||
+          +d['Start Year'] === +appState.selectedYear) &&
         d.Latitude &&
         d.Longitude &&
         d['Disaster Type'] === 'Earthquake'
     );
 
     const filteredHurricanes = appState.data.hurricaneData.filter(
-        (d) => !appState.selectedYear || +d.year === +appState.selectedYear
+      (d) => !appState.selectedYear || +d.year === +appState.selectedYear
+    );
+
+    const filteredFloods = appState.data.floodData.filter(
+      (d) =>
+        !appState.selectedYear || +d['Start Year'] === +appState.selectedYear
     );
 
     // Earthquakes
     const earthquakes = mapGroup
-        .selectAll('circle.earthquake')
-        .data(filteredEarthquakes, (d) => d.DisasterId || d.id);
+      .selectAll('circle.earthquake')
+      .data(filteredEarthquakes, (d) => d.DisasterId || d.id);
 
-
-    earthquakes
-        .join(enter => enter
-        .append('circle')
-        .attr('class', 'earthquake')
-        .attr('pointer-events', 'none')
-        .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
-        .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1])
-        .attr('r', d => Math.pow(2, +d['Magnitude']) * 0.075)
-        .attr('fill', '#d62728')
-        .attr('opacity', 0.7)
-        .attr('stroke', '#000')
-        .attr('stroke-width', 0.2),
-        update => update
-        .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
-        .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1]),
-        exit => exit.remove());
+    earthquakes.join(
+      (enter) =>
+        enter
+          .append('circle')
+          .attr('class', 'earthquake')
+          .attr('pointer-events', 'none')
+          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
+          .attr('r', (d) => Math.pow(2, +d['Magnitude']) * 0.075)
+          .attr('fill', '#d62728')
+          .attr('opacity', 0.7)
+          .attr('stroke', '#000')
+          .attr('stroke-width', 0.2),
+      (update) =>
+        update
+          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1]),
+      (exit) => exit.remove()
+    );
 
     // Hurricanes
     const hurricanes = mapGroup
-        .selectAll('circle.hurricane')
-        .data(filteredHurricanes, (d) => d.id);
+      .selectAll('circle.hurricane')
+      .data(filteredHurricanes, (d) => d.id);
 
-    hurricanes
-    .join(enter => enter
-        .append('circle')
-        .attr('class', 'hurricane')
-        .attr('pointer-events', 'none')
-        .attr('cx', d => projection([d.lon, d.lat])[0])
-        .attr('cy', d => projection([d.lon, d.lat])[1])
-        .attr('r', d => d.wind * 0.1)
-        .attr('fill', '#1f77b4')
-        .attr('opacity', 0.7)
-        .attr('stroke', '#000')
-        .attr('stroke-width', 0.3),
-        update => update
-        .attr('cx', d => projection([d.lon, d.lat])[0])
-        .attr('cy', d => projection([d.lon, d.lat])[1]),
-        exit => exit.remove()
+    hurricanes.join(
+      (enter) =>
+        enter
+          .append('circle')
+          .attr('class', 'hurricane')
+          .attr('pointer-events', 'none')
+          .attr('cx', (d) => projection([d.lon, d.lat])[0])
+          .attr('cy', (d) => projection([d.lon, d.lat])[1])
+          .attr('r', (d) => d.wind * 0.1)
+          .attr('fill', '#1f77b4')
+          .attr('opacity', 0.7)
+          .attr('stroke', '#000')
+          .attr('stroke-width', 0.3),
+      (update) =>
+        update
+          .attr('cx', (d) => projection([d.lon, d.lat])[0])
+          .attr('cy', (d) => projection([d.lon, d.lat])[1]),
+      (exit) => exit.remove()
     );
-});
+
+    // Floods
+    const floods = mapGroup
+      .selectAll('circle.flood')
+      .data(filteredFloods, (d) => d.DisasterId || d.id);
+
+    floods.join(
+      (enter) =>
+        enter
+          .append('circle')
+          .attr('class', 'flood')
+          .attr('pointer-events', 'none')
+          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
+          .attr('r', (d) => {
+            // Scale radius based on total affected population
+            const totalAffected = parseInt(d['Total Affected']) || 0;
+            return Math.max(3, Math.min(15, Math.sqrt(totalAffected) * 0.001));
+          })
+          .attr('fill', '#2ca02c')
+          .attr('opacity', 0.7)
+          .attr('stroke', '#000')
+          .attr('stroke-width', 0.2),
+      (update) =>
+        update
+          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1]),
+      (exit) => exit.remove()
+    );
+  });
 
   // create zoom behavior generator
   const zoom = d3

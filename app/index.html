@@ -13,20 +13,27 @@
     <div class="container">
       <div class="left-container">
         <div class="map-container">
-            <svg id="map-svg"></svg>
-            <div class="year-slider-container">
-                <p>1960</p>
-                <input type="range" id="year-slider" min="1960" max="2020" step="1" value="1960"/>
-                <p>2020</p>
-            </div>
+          <svg id="map-svg"></svg>
+          <div class="year-slider-container">
+            <p>1960</p>
+            <input
+              type="range"
+              id="year-slider"
+              min="1960"
+              max="2020"
+              step="1"
+              value="1960"
+            />
+            <p>2020</p>
+          </div>
         </div>
         <div class="country-data">
-            <div class="line-chart-container">
-                <svg id="line-chart-svg"></svg>
-            </div>
-            <div class="bar-chart-container">
-                <svg id="bar-chart-svg"></svg>
-            </div>
+          <div class="line-chart-container">
+            <svg id="line-chart-svg"></svg>
+          </div>
+          <div class="bar-chart-container">
+            <svg id="bar-chart-svg"></svg>
+          </div>
         </div>
       </div>
       <div class="right-container">
@@ -36,14 +43,15 @@
         <div class="hurricane-scatter-plot-container">
           <svg id="hurricane-scatter-plot-svg"></svg>
         </div>
-        <div class="drought-scatter-plot-container">
-          <svg id="drought-scatter-plot-svg"></svg>
+        <div class="flood-scatter-plot-container">
+          <svg id="flood-scatter-plot-svg"></svg>
         </div>
       </div>
     </div>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/topojson-client@3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <script type="module" src="main.js"></script>
   </body>
 </html>

@@ -50,7 +50,7 @@ svg {
 
 .earthquake-scatter-plot-container, 
 .hurricane-scatter-plot-container, 
-.drought-scatter-plot-container {
+.flood-scatter-plot-container {
     height: calc(100% / 3);
     padding: 16px;
 }

@@ -5,52 +5,13 @@ import {
 } from '../utils/convertCountryCode.js';
 import { addDisplayUpdateStep } from '../utils/updateDisplay.js';
 
-// Add animation state
-let isAnimationEnabled = true;
-
-// Toggle animation function
-export function toggleLineChartAnimation() {
-  isAnimationEnabled = !isAnimationEnabled;
-  // Update button text
-  d3.select('#animation-toggle').text(
-    isAnimationEnabled ? 'Disable Animation' : 'Enable Animation'
-  );
-  // Redraw chart with new animation setting
-  displayLineChart(appState.selectedCountry);
-}
-
 // linechart of global warming over time
 export default function displayLineChart(selectedCountry) {
-  // Add toggle button if it doesn't exist
-  if (!d3.select('#animation-toggle').size()) {
-    const container = d3.select('.line-chart-container');
-    container.style('position', 'relative'); // Ensure container is positioned
-
-    container
-      .append('button')
-      .attr('id', 'animation-toggle')
-      .style('position', 'absolute')
-      .style('bottom', '10px')
-      .style('left', '10px')
-      .style('z-index', '9999')
-      .style('padding', '5px 10px')
-      .style('border-radius', '4px')
-      .style('border', '1px solid #ccc')
-      .style('background', 'white')
-      .style('cursor', 'pointer')
-      .text(isAnimationEnabled ? 'Disable Animation' : 'Enable Animation')
-      .on('click', toggleLineChartAnimation);
-  }
-
   const { temperatureData } = appState.data;
 
   // convert country id to name and iso2 for consistency across csvs
   const selectedCountryName = convertIdToName(selectedCountry);
   const selectedCountryISO2 = convertNameToISO2(selectedCountryName);
-
-  //   console.log(selectedCountry);
-  //   console.log(selectedCountryISO2);
-  //   console.log(selectedCountryName);
 
   // Find the selected country's data
   let countryData = temperatureData.find((d) => d.ISO2 === selectedCountryISO2);
@@ -121,30 +82,28 @@ export default function displayLineChart(selectedCountry) {
     .call(yAxis)
     .attr('class', 'y-axis');
 
-  // Add line path with conditional animation
+  // Add line path with animation
   const path = svg
     .append('path')
     .datum(transformedData)
     .attr('fill', 'none')
-    .attr('stroke', '#ff6b6b')
+    .attr('stroke', '#9467bd')
     .attr('stroke-width', 2.5)
     .attr('d', line);
 
-  if (isAnimationEnabled) {
-    // Get the total length of the path
-    const totalLength = path.node().getTotalLength();
+  // Get the total length of the path
+  const totalLength = path.node().getTotalLength();
 
-    // Set up the starting position of the line
-    path
-      .attr('stroke-dasharray', totalLength + ' ' + totalLength)
-      .attr('stroke-dashoffset', totalLength)
-      .transition()
-      .duration(1000)
-      .ease(d3.easeLinear)
-      .attr('stroke-dashoffset', 0);
-  }
+  // Set up the starting position of the line
+  path
+    .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+    .attr('stroke-dashoffset', totalLength)
+    .transition()
+    .duration(1000)
+    .ease(d3.easeLinear)
+    .attr('stroke-dashoffset', 0);
 
-  // Add dots with conditional animation
+  // Add dots with animation
   const dots = svg
     .selectAll('.dot')
     .data(transformedData)
@@ -154,18 +113,12 @@ export default function displayLineChart(selectedCountry) {
     .attr('cx', (d) => xScale(d.year))
     .attr('cy', (d) => yScale(d.meanTemp))
     .attr('r', 3)
-    .attr('fill', '#ff6b6b');
-
-  if (isAnimationEnabled) {
-    dots
-      .style('opacity', 0)
-      .transition()
-      .delay((d, i) => i * (1000 / transformedData.length))
-      .duration(200)
-      .style('opacity', 0.7);
-  } else {
-    dots.style('opacity', 0.7);
-  }
+    .attr('fill', '#9467bd')
+    .style('opacity', 0)
+    .transition()
+    .delay((d, i) => i * (1000 / transformedData.length))
+    .duration(200)
+    .style('opacity', 0.7);
 
   // Add tooltip
   const tooltip = d3
