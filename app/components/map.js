@@ -1,5 +1,6 @@
 import appState from '../appState.js';
 import { updateDisplay, addDisplayUpdateStep, addYearDisplayUpdateStep } from '../utils/updateDisplay.js';
+import { convertIdToName } from '../utils/convertCountryCode.js';
 
 export default function displayMap() {
   const { countryShapeData, disasterData, hurricaneData } = appState.data;
@@ -75,11 +76,16 @@ export default function displayMap() {
     .attr('y', margin.top / 2)
     .attr('text-anchor', 'middle')
     .style('font-size', '1.5rem')
-    .text(`Natural Disasters - Year ${appState.selectedYear} ${appState.selectedCountry || ''}`);
+    .text(`Natural Disasters - Year ${appState.selectedYear} ${convertIdToName(appState.selectedCountry) || ''}`);
 
     addYearDisplayUpdateStep(() => {
         d3.select('#map-title')
-        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${appState.selectedCountry || ''}`);
+        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
+    });
+
+    addDisplayUpdateStep(() => {
+        d3.select('#map-title')
+        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
     });
 
   const countryGroups = mapGroup
