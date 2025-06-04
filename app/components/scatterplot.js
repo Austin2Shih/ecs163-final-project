@@ -29,7 +29,7 @@ export default function displayScatterPlot(selectedCountry) {
   const selectedCountryName = convertIdToName(selectedCountry);
   const selectedCountryISO2 = convertNameToISO2(selectedCountryName);
   const selectedCountryISO3 = convertISO2ToISO3(selectedCountryISO2);
-  console.log(selectedCountryISO3);
+//   console.log(selectedCountryISO3);
 
   // Filter earthquake data
   let earthquakeData = appState.data.disasterData?.filter((d) => {
@@ -41,7 +41,7 @@ export default function displayScatterPlot(selectedCountry) {
     return isEarthquake && isInTimeRange && matchesCountry;
   });
 
-  console.log(earthquakeData);
+//   console.log(earthquakeData);
 
   // If no country is selected, default to worldwide
   if (!selectedCountry) {
@@ -52,7 +52,7 @@ export default function displayScatterPlot(selectedCountry) {
       const isInTimeRange = 1961 <= startYear && startYear <= 2024;
       return isEarthquake && isInTimeRange;
     });
-    console.log(earthquakeData);
+    // console.log(earthquakeData);
   }
 
   // Create scales

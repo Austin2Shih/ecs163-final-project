@@ -1,8 +1,9 @@
 import appState from '../appState.js';
-import { updateDisplay, addDisplayUpdateStep } from '../utils/updateDisplay.js';
+import { updateDisplay, addDisplayUpdateStep, addYearDisplayUpdateStep } from '../utils/updateDisplay.js';
+import { convertIdToName } from '../utils/convertCountryCode.js';
 
 export default function displayMap() {
-  const { countryShapeData, disasterData } = appState.data;
+  const { countryShapeData, disasterData, hurricaneData } = appState.data;
 
   // get map svg container and its width and height
   const svg = d3.select('#map-svg');
@@ -70,11 +71,22 @@ export default function displayMap() {
   // title for the map
   svg
     .append('text')
+    .attr('id', 'map-title')
     .attr('x', width / 2)
     .attr('y', margin.top / 2)
     .attr('text-anchor', 'middle')
     .style('font-size', '1.5rem')
-    .text('Natural Disasters');
+    .text(`Natural Disasters - Year ${appState.selectedYear} ${convertIdToName(appState.selectedCountry) || ''}`);
+
+    addYearDisplayUpdateStep(() => {
+        d3.select('#map-title')
+        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
+    });
+
+    addDisplayUpdateStep(() => {
+        d3.select('#map-title')
+        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
+    });
 
   const countryGroups = mapGroup
     .selectAll('g.country')
@@ -137,28 +149,105 @@ export default function displayMap() {
       return screenArea > 1500 ? 1 : 0;
     });
 
-  const disasterColor = d3
-    .scaleOrdinal()
-    .domain(['Storm', 'Earthquake', 'Drought'])
-    .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
+//   const disasterColor = d3
+//     .scaleOrdinal()
+//     .domain(['Storm', 'Earthquake', 'Drought'])
+//     .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
 
-  const disastersWithCoords = disasterData.filter(
-    (d) => d.Latitude && d.Longitude
+  const earthquakesWithCoords = disasterData.filter(
+    (d) => d.Latitude && d.Longitude && d['Disaster Type'] === 'Earthquake'
   );
 
   mapGroup
-    .selectAll('circle.disaster')
-    .data(disastersWithCoords)
+    .selectAll('circle.earthquake')
+    .data(earthquakesWithCoords.filter(d => (!appState.selectedYear || +d['Start Year'] === +appState.selectedYear)))
     .enter()
     .append('circle')
-    .attr('class', 'disaster')
+    .attr('class', 'earthquake')
+    .attr('pointer-events', 'none')
     .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
     .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
-    .attr('r', 3)
-    .attr('fill', (d) => disasterColor(d['Disaster Type']))
-    .attr('opacity', 0.6)
-    .attr('stroke', '#333')
+    .attr('r', (d) => Math.pow(2, +d['Magnitude']) * 0.075)
+    .attr('fill', '#d62728')
+    .attr('opacity', 0.7)
+    .attr('stroke', '#000')
     .attr('stroke-width', 0.2);
+
+  mapGroup
+    .selectAll('circle.hurricane')
+    .data(hurricaneData.filter(d => !appState.selectedYear || +d.year === +appState.selectedYear))
+    .enter()
+    .append('circle')
+    .attr('class', 'hurricane')
+    .attr('pointer-events', 'none')
+    .attr('cx', (d) => projection([d.lon, d.lat])[0])
+    .attr('cy', (d) => projection([d.lon, d.lat])[1])
+    .attr('r', (d) => d.wind * 0.1)
+    .attr('fill', '#1f77b4')
+    .attr('opacity', 0.7)
+    .attr('stroke', '#000')
+    .attr('stroke-width', 0.3);
+
+
+addYearDisplayUpdateStep(() => {
+    const filteredEarthquakes = disasterData.filter(
+        (d) =>
+        (!appState.selectedYear || +d['Start Year'] === +appState.selectedYear) &&
+        d.Latitude &&
+        d.Longitude &&
+        d['Disaster Type'] === 'Earthquake'
+    );
+
+    const filteredHurricanes = appState.data.hurricaneData.filter(
+        (d) => !appState.selectedYear || +d.year === +appState.selectedYear
+    );
+
+    // Earthquakes
+    const earthquakes = mapGroup
+        .selectAll('circle.earthquake')
+        .data(filteredEarthquakes, (d) => d.DisasterId || d.id);
+
+
+    earthquakes
+        .join(enter => enter
+        .append('circle')
+        .attr('class', 'earthquake')
+        .attr('pointer-events', 'none')
+        .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
+        .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1])
+        .attr('r', d => Math.pow(2, +d['Magnitude']) * 0.075)
+        .attr('fill', '#d62728')
+        .attr('opacity', 0.7)
+        .attr('stroke', '#000')
+        .attr('stroke-width', 0.2),
+        update => update
+        .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
+        .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1]),
+        exit => exit.remove());
+
+    // Hurricanes
+    const hurricanes = mapGroup
+        .selectAll('circle.hurricane')
+        .data(filteredHurricanes, (d) => d.id);
+
+    hurricanes
+    .join(enter => enter
+        .append('circle')
+        .attr('class', 'hurricane')
+        .attr('pointer-events', 'none')
+        .attr('cx', d => projection([d.lon, d.lat])[0])
+        .attr('cy', d => projection([d.lon, d.lat])[1])
+        .attr('r', d => d.wind * 0.1)
+        .attr('fill', '#1f77b4')
+        .attr('opacity', 0.7)
+        .attr('stroke', '#000')
+        .attr('stroke-width', 0.3),
+        update => update
+        .attr('cx', d => projection([d.lon, d.lat])[0])
+        .attr('cy', d => projection([d.lon, d.lat])[1]),
+        exit => exit.remove()
+    );
+});
 
   // create zoom behavior generator
   const zoom = d3
