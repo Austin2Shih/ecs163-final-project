@@ -3,6 +3,7 @@ const appState = {
     selectedCountry: null,
     selectedYear: null,
     updateCallbacks: [],
+    yearUpdateCallbacks: [],
     data: {
         countryCodeData: null,
         disasterData: null,

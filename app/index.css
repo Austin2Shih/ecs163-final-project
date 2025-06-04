@@ -37,6 +37,7 @@ svg {
     width: 65%;
     height: 100%;
     border-right: solid 1px black;
+    position: relative;
 }
 
 .line-chart-container, .scatter-plot-container, .bar-chart-container {
@@ -71,4 +72,19 @@ svg {
     0% { opacity: 0.3; }
     50% { opacity: 1; }
     100% { opacity: 0.3; }
+}
+
+.year-slider-container {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 24px;
+    padding: 50px;
+}
+
+#year-slider {
+    flex-grow: 1;
 }
