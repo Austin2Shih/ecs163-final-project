@@ -13,21 +13,21 @@ export default function displayBarChart(selectedCountry) {
     const selectedCountryISO2 = convertNameToISO2(selectedCountryName);
     const selectedCountryISO3 = convertISO2ToISO3(selectedCountryISO2);
     
-    console.log('Country conversion chain:');
-    console.log('ID:', selectedCountry, '-> Name:', selectedCountryName);
-    console.log('Name:', selectedCountryName, '-> ISO2:', selectedCountryISO2);
-    console.log('ISO2:', selectedCountryISO2, '-> ISO3:', selectedCountryISO3);
+    // console.log('Country conversion chain:');
+    // console.log('ID:', selectedCountry, '-> Name:', selectedCountryName);
+    // console.log('Name:', selectedCountryName, '-> ISO2:', selectedCountryISO2);
+    // console.log('ISO2:', selectedCountryISO2, '-> ISO3:', selectedCountryISO3);
 
     //filter using iso3 
     let countryDisasterData = [];
     if (selectedCountry && disasterData) {
         countryDisasterData = disasterData.filter(d => d.ISO === selectedCountryISO3);
-        console.log(`Found ${countryDisasterData.length} records using ISO3: ${selectedCountryISO3}`);
+        // console.log(`Found ${countryDisasterData.length} records using ISO3: ${selectedCountryISO3}`);
     }
     
     //if no ISO3 match, fall back to your existing name-based matching
     if (countryDisasterData.length === 0 && selectedCountry) {
-        console.log('No ISO3 matches, trying name-based matching...');
+        // console.log('No ISO3 matches, trying name-based matching...');
     }
 
     //grab svg
@@ -35,7 +35,7 @@ export default function displayBarChart(selectedCountry) {
     const { width, height } = svg.node().getBoundingClientRect();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     
-    console.log('Bar chart dimensions:', width, 'x', height);
+    // console.log('Bar chart dimensions:', width, 'x', height);
 
     const margin = { top: 30, right: 100, bottom: 60, left: 50 };
     const contentWidth = width - margin.left - margin.right;
@@ -46,24 +46,24 @@ export default function displayBarChart(selectedCountry) {
     //defaults to world data
     if (!selectedCountry) {
         countryDisasterData = disasterData || [];
-        console.log('No country selected - showing world data:', countryDisasterData.length, 'records');
+        // console.log('No country selected - showing world data:', countryDisasterData.length, 'records');
     } else {
         countryDisasterData = disasterData.filter(d => d.ISO === selectedCountryISO3);
         if (countryDisasterData.length === 0) {
-            console.log("showing blank chart as no disaster data was found")
+            // console.log("showing blank chart as no disaster data was found")
         }
     }
 
     //process into year ranges
     function processDisasterData(rawData) {
         if (!rawData || rawData.length === 0) {
-            console.log('No disaster data to process');
+            // console.log('No disaster data to process');
             return [];
         }
 
-        console.log('Processing', rawData.length, 'disaster records');
-        console.log('Sample record:', rawData[0]);
-        console.log('All field names in sample record:', Object.keys(rawData[0]));
+        // console.log('Processing', rawData.length, 'disaster records');
+        // console.log('Sample record:', rawData[0]);
+        // console.log('All field names in sample record:', Object.keys(rawData[0]));
         
         const numericFields = {};
         Object.keys(rawData[0]).forEach(key => {
@@ -72,7 +72,7 @@ export default function displayBarChart(selectedCountry) {
                 numericFields[key] = value;
             }
         });
-        console.log('Numeric fields (potential cost fields):', numericFields);
+        // console.log('Numeric fields (potential cost fields):', numericFields);
 
         //5 year ranges
         const getYearRange = (year) => {
@@ -108,12 +108,12 @@ export default function displayBarChart(selectedCountry) {
             }
 
             if (!year || year < 1950 || year > 2030) {
-                if (index < 5) console.log(`Record ${index}: Invalid year`, year, 'from fields:', yearFields.map(f => disaster[f]));
+                // if (index < 5) console.log(`Record ${index}: Invalid year`, year, 'from fields:', yearFields.map(f => disaster[f]));
                 return;
             }
             
             recordsWithValidYear++;
-            if (index < 5) console.log(`Record ${index}: Valid year ${year}`);
+            // if (index < 5) console.log(`Record ${index}: Valid year ${year}`);
 
             const yearRange = getYearRange(year);
             
@@ -145,7 +145,7 @@ export default function displayBarChart(selectedCountry) {
             for (let field of costFields) {
                 if (disaster[field] && !isNaN(parseFloat(disaster[field]))) {
                     cost = parseFloat(disaster[field]);
-                    if (index < 5) console.log(`Record ${index}: Found cost ${cost} in field "${field}"`);
+                    // if (index < 5) console.log(`Record ${index}: Found cost ${cost} in field "${field}"`);
                     break;
                 }
             }
@@ -161,7 +161,7 @@ export default function displayBarChart(selectedCountry) {
                     costInBillions = 0;
                 }
 
-                if (index < 5) console.log(`Record ${index}: Cost ${cost} -> ${costInBillions}B, Type: ${disasterType}`);
+                // if (index < 5) console.log(`Record ${index}: Cost ${cost} -> ${costInBillions}B, Type: ${disasterType}`);
 
                 //categorize disasters - only the three we want
                 if (disasterType.includes('earthquake')) rangeData.earthquake += costInBillions;
@@ -170,7 +170,7 @@ export default function displayBarChart(selectedCountry) {
             }
         });
 
-        console.log(`Processing summary: ${recordsProcessed} total, ${recordsWithValidYear} with valid years, ${recordsWithValidCost} with valid costs`);
+        // console.log(`Processing summary: ${recordsProcessed} total, ${recordsWithValidYear} with valid years, ${recordsWithValidCost} with valid costs`);
 
         //convert to array and sort by year range
         const result = Array.from(processedData.values()).sort((a, b) => {
@@ -179,7 +179,7 @@ export default function displayBarChart(selectedCountry) {
             return aStart - bStart;
         });
 
-        console.log('Final processed data:', result);
+        // console.log('Final processed data:', result);
         result.forEach(yearData => {
             const total = Object.keys(yearData).filter(k => k !== 'year').reduce((sum, k) => sum + yearData[k], 0);
         });
@@ -198,7 +198,7 @@ export default function displayBarChart(selectedCountry) {
         return; //leave chart blank
     }
 
-    console.log('Using real disaster data for:', selectedCountryName || 'World', processedData);
+    // console.log('Using real disaster data for:', selectedCountryName || 'World', processedData);
 
     //3 main disaster types
     const disasterTypes = [
@@ -212,7 +212,7 @@ export default function displayBarChart(selectedCountry) {
     const stack = d3.stack().keys(keys);
     const stackedData = stack(processedData);
 
-    console.log('Stacked data prepared, layers:', stackedData.length);
+    // console.log('Stacked data prepared, layers:', stackedData.length);
 
     //create scales using real processed data
     const xScale = d3.scaleBand()
@@ -229,7 +229,7 @@ export default function displayBarChart(selectedCountry) {
         .domain(keys)
         .range(disasterTypes.map(d => d.color));
 
-    console.log('Scales created, max value:', maxValue);
+    // console.log('Scales created, max value:', maxValue);
 
     // add axes
     const xAxis = d3.axisBottom(xScale);
@@ -250,7 +250,7 @@ export default function displayBarChart(selectedCountry) {
         .attr('class', 'y-axis')
         .style("font-size", "10px");
 
-    console.log('Axes added');
+    // console.log('Axes added');
 
     //making the stacked bars
     const layers = svg.selectAll('.layer')
@@ -269,7 +269,7 @@ export default function displayBarChart(selectedCountry) {
         .attr('height', d => yScale(d[0]) - yScale(d[1]))
         .attr('width', xScale.bandwidth());
 
-    console.log('Bars created');
+    // console.log('Bars created');
 
     //title with country name
     svg.append('text')
@@ -323,8 +323,8 @@ export default function displayBarChart(selectedCountry) {
         .style('font-size', '9px')
         .text(d => d.name);
 
-    console.log('Legend added');
-    console.log('Bar chart completed successfully!');
+    // console.log('Legend added');
+    // console.log('Bar chart completed successfully!');
 }
 
 addDisplayUpdateStep(() => {
