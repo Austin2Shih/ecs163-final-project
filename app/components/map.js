@@ -4,11 +4,22 @@ import {
   addDisplayUpdateStep,
   addYearDisplayUpdateStep,
 } from '../utils/updateDisplay.js';
-import { convertIdToName } from '../utils/convertCountryCode.js';
+import {
+  convertIdToName,
+  convertISO3ToId,
+} from '../utils/convertCountryCode.js';
 
 export default function displayMap() {
-  const { countryShapeData, disasterData, hurricaneData, floodData } =
-    appState.data;
+  const {
+    countryShapeData,
+    disasterData,
+    hurricaneData,
+    temperatureData,
+    floodData,
+  } = appState.data;
+  const relevantCountries = new Set(
+    disasterData.map((d) => convertISO3ToId(d['ISO']))
+  );
 
   // get map svg container and its width and height
   const svg = d3.select('#map-svg');
@@ -103,6 +114,35 @@ export default function displayMap() {
     );
   });
 
+  const countryTempData = Object.fromEntries(
+    temperatureData.map((d) => {
+      let latestTemp = 0.0;
+      const yearEntries = Object.fromEntries(
+        Object.entries(d)
+          .filter(([key, _]) => !isNaN(key))
+          .map(([key, val]) => {
+            if (val !== '') {
+              latestTemp = val;
+            }
+            return [key, val === '' ? latestTemp : val];
+          })
+      );
+
+      return [convertISO3ToId(d['ISO3']), yearEntries];
+    })
+  );
+
+  const temperatureColor = d3
+    .scaleSequential()
+    .domain(
+      d3.extent(
+        Object.values(countryTempData)
+          .map((d) => Object.values(d))
+          .flat()
+      )
+    )
+    .interpolator(d3.interpolateYlOrRd);
+
   const countryGroups = mapGroup
     .selectAll('g.country')
     .data(countries.features, (d) => +d.id)
@@ -116,7 +156,10 @@ export default function displayMap() {
     })
     .on('click', (_, d) => {
       const clickedCountryId = +d.id;
-      if (appState.selectedCountry === clickedCountryId) {
+      if (
+        !relevantCountries.has(clickedCountryId) ||
+        appState.selectedCountry === clickedCountryId
+      ) {
         appState.selectedCountry = null;
       } else {
         appState.selectedCountry = clickedCountryId;
@@ -139,11 +182,27 @@ export default function displayMap() {
     });
   });
 
+  addYearDisplayUpdateStep(() => {
+    countryGroups.selectAll('path').attr('fill', (d) => {
+      if (!relevantCountries.has(+d.id)) {
+        return '#eee';
+      }
+      const temp = countryTempData?.[+d.id]?.[appState.selectedYear];
+      return temperatureColor(temp || 0.0);
+    });
+  });
+
   // Draw path within group
   countryGroups
     .append('path')
     .attr('d', path)
-    .attr('fill', '#ddd')
+    .attr('fill', (d) => {
+      if (!relevantCountries.has(+d.id)) {
+        return '#eee';
+      }
+      const temp = countryTempData?.[+d.id]?.[appState.selectedYear];
+      return temperatureColor(temp || 0.0);
+    })
     .attr('stroke', (d) =>
       +d.id === appState.selectedCountry ? 'yellow' : 'black'
     )
@@ -163,11 +222,6 @@ export default function displayMap() {
       const screenArea = path.area(d.largestPolygon);
       return screenArea > 1500 ? 1 : 0;
     });
-
-  //   const disasterColor = d3
-  //     .scaleOrdinal()
-  //     .domain(['Hurricane', 'Earthquake', 'Flood'])
-  //     .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
 
   const earthquakesWithCoords = disasterData.filter(
     (d) => d.Latitude && d.Longitude && d['Disaster Type'] === 'Earthquake'
@@ -189,7 +243,7 @@ export default function displayMap() {
     .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
     .attr('r', (d) => Math.pow(2, +d['Magnitude']) * 0.075)
     .attr('fill', '#d62728')
-    .attr('opacity', 0.7)
+    .attr('opacity', 0.55)
     .attr('stroke', '#000')
     .attr('stroke-width', 0.2);
 
@@ -208,7 +262,7 @@ export default function displayMap() {
     .attr('cy', (d) => projection([d.lon, d.lat])[1])
     .attr('r', (d) => d.wind * 0.1)
     .attr('fill', '#1f77b4')
-    .attr('opacity', 0.7)
+    .attr('opacity', 0.55)
     .attr('stroke', '#000')
     .attr('stroke-width', 0.3);
 
@@ -271,7 +325,7 @@ export default function displayMap() {
           .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
           .attr('r', (d) => Math.pow(2, +d['Magnitude']) * 0.075)
           .attr('fill', '#d62728')
-          .attr('opacity', 0.7)
+          .attr('opacity', 0.55)
           .attr('stroke', '#000')
           .attr('stroke-width', 0.2),
       (update) =>
@@ -296,7 +350,7 @@ export default function displayMap() {
           .attr('cy', (d) => projection([d.lon, d.lat])[1])
           .attr('r', (d) => d.wind * 0.1)
           .attr('fill', '#1f77b4')
-          .attr('opacity', 0.7)
+          .attr('opacity', 0.55)
           .attr('stroke', '#000')
           .attr('stroke-width', 0.3),
       (update) =>
@@ -335,6 +389,80 @@ export default function displayMap() {
       (exit) => exit.remove()
     );
   });
+
+  // create the legend
+  const legendHeight = 20;
+  const legendWidth = contentWidth / 4;
+
+  const legendScale = d3
+    .scaleLinear()
+    .domain(temperatureColor.domain())
+    .range([0, legendWidth]);
+
+  // add gradient for the legend
+  const defs = svg.append('defs');
+
+  const linearGradient = defs
+    .append('linearGradient')
+    .attr('id', 'legend-gradient')
+    .attr('x1', '0%')
+    .attr('y1', '100%')
+    .attr('x2', '100%')
+    .attr('y2', '100%');
+
+  const [min, max] = legendScale.domain();
+  const mid = (min + max) / 2;
+
+  linearGradient
+    .append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', temperatureColor(min));
+
+  linearGradient
+    .append('stop')
+    .attr('offset', '50%')
+    .attr('stop-color', temperatureColor(mid));
+
+  linearGradient
+    .append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', temperatureColor(max));
+
+  // Add the legend rectangle with gradient fill
+  svg
+    .append('g')
+    .attr(
+      'transform',
+      `translate(${width - legendWidth - 20}, ${margin.top / 2})`
+    )
+    .append('rect')
+    .attr('width', legendWidth)
+    .attr('height', legendHeight)
+    .style('fill', 'url(#legend-gradient)');
+
+  svg
+    .append('g')
+    .attr(
+      'transform',
+      `translate(${width - legendWidth - 20}, ${margin.top / 2 - 6})`
+    )
+    .append('text')
+    .style('font-size', '0.75rem')
+    .text(`Temperature change since 1960`);
+
+  // Add the legend axis
+  svg
+    .append('g')
+    .attr(
+      'transform',
+      `translate(${width - legendWidth - 20}, ${margin.top / 2 + legendHeight})`
+    )
+    .call(
+      d3
+        .axisBottom(legendScale)
+        .ticks(5)
+        .tickFormat((d) => `+${d3.format('.2s')(d)}°C`)
+    );
 
   // create zoom behavior generator
   const zoom = d3
