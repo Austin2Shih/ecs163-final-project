@@ -4,6 +4,13 @@ const appState = {
     selectedYear: null,
     updateCallbacks: [],
     yearUpdateCallbacks: [],
+
+    //properties for animated slideshow
+    isAnimating: false,
+    animationComplete: false,
+    animationSpeed: 150,
+    isInteractionEnabled: false,
+
     data: {
         countryCodeData: null,
         disasterData: null,

@@ -76,16 +76,16 @@ export default function displayMap() {
     .attr('y', margin.top / 2)
     .attr('text-anchor', 'middle')
     .style('font-size', '1.5rem')
-    .text(`Natural Disasters - Year ${appState.selectedYear} ${convertIdToName(appState.selectedCountry) || ''}`);
+    .text(`Natural Disasters - Year ${appState.selectedYear || 'All Years'} ${convertIdToName(appState.selectedCountry) || ''}`);
 
     addYearDisplayUpdateStep(() => {
         d3.select('#map-title')
-        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
+        .text(`Natural Disasters - Year ${appState.selectedYear || 'All Years'} ${convertIdToName(appState.selectedCountry) || ''}`);
     });
 
     addDisplayUpdateStep(() => {
         d3.select('#map-title')
-        .text(`Natural Disasters - Year ${appState.selectedYear || ''} ${convertIdToName(appState.selectedCountry) || ''}`);
+        .text(`Natural Disasters - Year ${appState.selectedYear || 'All Years'} ${convertIdToName(appState.selectedCountry) || ''}`);
     });
 
   const countryGroups = mapGroup
@@ -100,6 +100,11 @@ export default function displayMap() {
       return +d.id === appState.selectedCountry ? 1 : 0.3;
     })
     .on('click', (_, d) => {
+      // Only allow interaction if not animating and interactions are enabled
+      if (appState.isAnimating || !appState.isInteractionEnabled) {
+        return;
+      }
+      
       const clickedCountryId = +d.id;
       if (appState.selectedCountry === clickedCountryId) {
         appState.selectedCountry = null;
@@ -121,6 +126,11 @@ export default function displayMap() {
     countryGroups.style('opacity', (d) => {
       if (appState.selectedCountry === null) return 1;
       return +d.id === appState.selectedCountry ? 1 : 0.3;
+    });
+    
+    // Update cursor based on interaction state
+    countryGroups.style('cursor', () => {
+      return (appState.isAnimating || !appState.isInteractionEnabled) ? 'default' : 'pointer';
     });
   });
 
@@ -148,11 +158,6 @@ export default function displayMap() {
       const screenArea = path.area(d.largestPolygon);
       return screenArea > 1500 ? 1 : 0;
     });
-
-//   const disasterColor = d3
-//     .scaleOrdinal()
-//     .domain(['Storm', 'Earthquake', 'Drought'])
-//     .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
 
   const earthquakesWithCoords = disasterData.filter(
     (d) => d.Latitude && d.Longitude && d['Disaster Type'] === 'Earthquake'
@@ -188,7 +193,6 @@ export default function displayMap() {
     .attr('stroke', '#000')
     .attr('stroke-width', 0.3);
 
-
 addYearDisplayUpdateStep(() => {
     const filteredEarthquakes = disasterData.filter(
         (d) =>
@@ -202,51 +206,75 @@ addYearDisplayUpdateStep(() => {
         (d) => !appState.selectedYear || +d.year === +appState.selectedYear
     );
 
-    // Earthquakes
+    // Earthquakes with enter/exit animation
     const earthquakes = mapGroup
         .selectAll('circle.earthquake')
-        .data(filteredEarthquakes, (d) => d.DisasterId || d.id);
-
+        .data(filteredEarthquakes, (d) => d.DisasterId || d.id || `${d.Latitude}-${d.Longitude}-${d['Start Year']}`);
 
     earthquakes
-        .join(enter => enter
-        .append('circle')
-        .attr('class', 'earthquake')
-        .attr('pointer-events', 'none')
-        .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
-        .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1])
-        .attr('r', d => Math.pow(2, +d['Magnitude']) * 0.075)
-        .attr('fill', '#d62728')
-        .attr('opacity', 0.7)
-        .attr('stroke', '#000')
-        .attr('stroke-width', 0.2),
-        update => update
-        .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
-        .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1]),
-        exit => exit.remove());
+        .join(
+            enter => enter
+                .append('circle')
+                .attr('class', 'earthquake')
+                .attr('pointer-events', 'none')
+                .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
+                .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1])
+                .attr('r', 0) // Start with radius 0
+                .attr('fill', '#d62728')
+                .attr('opacity', 0)
+                .attr('stroke', '#000')
+                .attr('stroke-width', 0.2)
+                .transition()
+                .duration(appState.isAnimating ? 200 : 0)
+                .attr('r', d => Math.pow(2, +d['Magnitude']) * 0.075)
+                .attr('opacity', 0.7),
+            update => update
+                .transition()
+                .duration(appState.isAnimating ? 100 : 0)
+                .attr('cx', d => projection([+d.Longitude, +d.Latitude])[0])
+                .attr('cy', d => projection([+d.Longitude, +d.Latitude])[1]),
+            exit => exit
+                .transition()
+                .duration(appState.isAnimating ? 100 : 0)
+                .attr('r', 0)
+                .attr('opacity', 0)
+                .remove()
+        );
 
-    // Hurricanes
+    // Hurricanes with enter/exit animation
     const hurricanes = mapGroup
         .selectAll('circle.hurricane')
-        .data(filteredHurricanes, (d) => d.id);
+        .data(filteredHurricanes, (d) => d.id || `${d.lat}-${d.lon}-${d.year}`);
 
     hurricanes
-    .join(enter => enter
-        .append('circle')
-        .attr('class', 'hurricane')
-        .attr('pointer-events', 'none')
-        .attr('cx', d => projection([d.lon, d.lat])[0])
-        .attr('cy', d => projection([d.lon, d.lat])[1])
-        .attr('r', d => d.wind * 0.1)
-        .attr('fill', '#1f77b4')
-        .attr('opacity', 0.7)
-        .attr('stroke', '#000')
-        .attr('stroke-width', 0.3),
-        update => update
-        .attr('cx', d => projection([d.lon, d.lat])[0])
-        .attr('cy', d => projection([d.lon, d.lat])[1]),
-        exit => exit.remove()
-    );
+        .join(
+            enter => enter
+                .append('circle')
+                .attr('class', 'hurricane')
+                .attr('pointer-events', 'none')
+                .attr('cx', d => projection([d.lon, d.lat])[0])
+                .attr('cy', d => projection([d.lon, d.lat])[1])
+                .attr('r', 0) // Start with radius 0
+                .attr('fill', '#1f77b4')
+                .attr('opacity', 0)
+                .attr('stroke', '#000')
+                .attr('stroke-width', 0.3)
+                .transition()
+                .duration(appState.isAnimating ? 200 : 0)
+                .attr('r', d => d.wind * 0.1)
+                .attr('opacity', 0.7),
+            update => update
+                .transition()
+                .duration(appState.isAnimating ? 100 : 0)
+                .attr('cx', d => projection([d.lon, d.lat])[0])
+                .attr('cy', d => projection([d.lon, d.lat])[1]),
+            exit => exit
+                .transition()
+                .duration(appState.isAnimating ? 100 : 0)
+                .attr('r', 0)
+                .attr('opacity', 0)
+                .remove()
+        );
 });
 
   // create zoom behavior generator
@@ -258,6 +286,9 @@ addYearDisplayUpdateStep(() => {
       [width, height],
     ])
     .on('zoom', (event) => {
+      // Disable zoom during animation
+      if (appState.isAnimating) return;
+      
       mapGroup.attr('transform', event.transform);
       const zoomLevel = event.transform.k;
       // keep font-size the same as we zoom in. Also, once the country is large enough on the screen, display label.
@@ -273,6 +304,15 @@ addYearDisplayUpdateStep(() => {
         });
     });
 
-  // add zoom
+  // add zoom, but disable during animation
   svg.call(zoom);
+  
+  // Disable zoom during animation
+  addYearDisplayUpdateStep(() => {
+    if (appState.isAnimating) {
+      svg.on('.zoom', null);
+    } else {
+      svg.call(zoom);
+    }
+  });
 }

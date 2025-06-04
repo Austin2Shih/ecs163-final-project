@@ -15,3 +15,13 @@ export function addYearDisplayUpdateStep(updateStep) {
 export function yearUpdateDisplay() {
     appState.yearUpdateCallbacks.forEach(callback => callback())
 }
+
+export function updateYearDisplay() {
+    appState.yearUpdateCallbacks.forEach(callback => {
+        try {
+            callback();
+        } catch (error) {
+            console.error('Error in year update callback:', error);
+        }
+    });
+}
