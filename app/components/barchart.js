@@ -1,6 +1,8 @@
 import appState from '../appState.js';
 import { 
-    convertIdToName
+    convertIdToName,
+    convertNameToISO2,
+    convertISO2ToISO3
 } from '../utils/convertCountryCode.js';
 import { addDisplayUpdateStep } from '../utils/updateDisplay.js';
 
@@ -8,6 +10,25 @@ export default function displayBarChart(selectedCountry) {
     const { disasterData } = appState.data;
 
     const selectedCountryName = convertIdToName(selectedCountry);
+    const selectedCountryISO2 = convertNameToISO2(selectedCountryName);
+    const selectedCountryISO3 = convertISO2ToISO3(selectedCountryISO2);
+    
+    console.log('Country conversion chain:');
+    console.log('ID:', selectedCountry, '-> Name:', selectedCountryName);
+    console.log('Name:', selectedCountryName, '-> ISO2:', selectedCountryISO2);
+    console.log('ISO2:', selectedCountryISO2, '-> ISO3:', selectedCountryISO3);
+
+    // Filter using ISO3 like the scatter plot does
+    let countryDisasterData = [];
+    if (selectedCountry && disasterData) {
+        countryDisasterData = disasterData.filter(d => d.ISO === selectedCountryISO3);
+        console.log(`Found ${countryDisasterData.length} records using ISO3: ${selectedCountryISO3}`);
+    }
+    
+    //if no ISO3 match, fall back to your existing name-based matching
+    if (countryDisasterData.length === 0 && selectedCountry) {
+        console.log('No ISO3 matches, trying name-based matching...');
+    }
 
     //grab svg
     const svg = d3.select('#bar-chart-svg');
@@ -22,26 +43,15 @@ export default function displayBarChart(selectedCountry) {
 
     //clear and redraw every time
     svg.selectAll('*').remove();
-
-    //filter for selected country
-    let countryDisasterData = [];
-    if (selectedCountry && disasterData) {
-        //potential multiple ways to match country
-        countryDisasterData = disasterData.filter(d => 
-            d.Country === selectedCountryName ||
-            d.country === selectedCountryName ||
-            String(d.ISO) === String(selectedCountry) ||
-            String(d.ISO3) === String(selectedCountry) ||
-            String(d.id) === String(selectedCountry)
-        );
-    }
-    
     //defaults to world data
-    if (!countryDisasterData || countryDisasterData.length === 0) {
+    if (!selectedCountry) {
         countryDisasterData = disasterData || [];
-        console.log('Using world disaster data:', countryDisasterData.length, 'records');
+        console.log('No country selected - showing world data:', countryDisasterData.length, 'records');
     } else {
-        console.log('Found disaster records for', selectedCountryName, ':', countryDisasterData.length);
+        countryDisasterData = disasterData.filter(d => d.ISO === selectedCountryISO3);
+        if (countryDisasterData.length === 0) {
+            console.log("showing blank chart as no disaster data was found")
+        }
     }
 
     //process into year ranges
@@ -112,11 +122,7 @@ export default function displayBarChart(selectedCountry) {
                     year: yearRange,
                     earthquake: 0,
                     drought: 0,
-                    hurricane: 0,
-                    flood: 0,
-                    wildfire: 0,
-                    tornado: 0,
-                    winter_storm: 0
+                    hurricane: 0
                 });
             }
 
@@ -157,14 +163,10 @@ export default function displayBarChart(selectedCountry) {
 
                 if (index < 5) console.log(`Record ${index}: Cost ${cost} -> ${costInBillions}B, Type: ${disasterType}`);
 
-                //categorize disasters
+                //categorize disasters - only the three we want
                 if (disasterType.includes('earthquake')) rangeData.earthquake += costInBillions;
                 else if (disasterType.includes('drought')) rangeData.drought += costInBillions;
-                else if (disasterType.includes('hurricane') || disasterType.includes('cyclone') || disasterType.includes('typhoon')) rangeData.hurricane += costInBillions;
-                else if (disasterType.includes('flood')) rangeData.flood += costInBillions;
-                else if (disasterType.includes('fire') || disasterType.includes('wildfire')) rangeData.wildfire += costInBillions;
-                else if (disasterType.includes('tornado')) rangeData.tornado += costInBillions;
-                else if (disasterType.includes('storm') || disasterType.includes('winter')) rangeData.winter_storm += costInBillions;
+                else if (disasterType.includes('hurricane') || disasterType.includes('cyclone') || disasterType.includes('typhoon') || disasterType.includes('storm')) rangeData.hurricane += costInBillions;
             }
         });
 
@@ -193,19 +195,15 @@ export default function displayBarChart(selectedCountry) {
         const total = Object.keys(d).filter(k => k !== 'year').reduce((sum, k) => sum + d[k], 0);
         return total === 0;
     })) {
-        return; // Just return, leaving the chart blank
+        return; //leave chart blank
     }
 
     console.log('Using real disaster data for:', selectedCountryName || 'World', processedData);
 
-    // Disaster types
+    //3 main disaster types
     const disasterTypes = [
         { key: 'hurricane', name: 'Hurricane', color: '#e74c3c' },
         { key: 'drought', name: 'Drought', color: '#f39c12' },
-        { key: 'wildfire', name: 'Wildfire', color: '#e67e22' },
-        { key: 'winter_storm', name: 'Winter Storm', color: '#3498db' },
-        { key: 'flood', name: 'Flood', color: '#9b59b6' },
-        { key: 'tornado', name: 'Tornado', color: '#1abc9c' },
         { key: 'earthquake', name: 'Earthquake', color: '#34495e' }
     ];
 
@@ -254,7 +252,7 @@ export default function displayBarChart(selectedCountry) {
 
     console.log('Axes added');
 
-    // Create stacked bars
+    //making the stacked bars
     const layers = svg.selectAll('.layer')
         .data(stackedData)
         .enter()
@@ -273,7 +271,7 @@ export default function displayBarChart(selectedCountry) {
 
     console.log('Bars created');
 
-    // Add title with country name (same pattern as line chart)
+    //title with country name
     svg.append('text')
         .attr('class', 'chart-title')
         .attr('text-anchor', 'middle')
@@ -283,7 +281,7 @@ export default function displayBarChart(selectedCountry) {
         .style('font-weight', 'bold')
         .text(`${selectedCountryName || 'World'} - Disaster Costs by Year Range`);
 
-    // Add axis labels (same pattern as line chart)
+    //axis labels
     svg.append('text')
         .attr('class', 'x-label')
         .attr('text-anchor', 'middle')
@@ -301,7 +299,7 @@ export default function displayBarChart(selectedCountry) {
         .style('font-size', '10px')
         .text('Damage Cost (Billions USD)');
 
-    // Add legend
+    //legend
     const legend = svg.append('g')
         .attr('class', 'legend')
         .attr('transform', `translate(${width - margin.right + 10}, ${margin.top + 20})`);
