@@ -9,10 +9,10 @@ import { addDisplayUpdateStep } from '../utils/updateDisplay.js';
 // scatterplot of natural disasters over time
 export default function displayScatterPlot(selectedCountry) {
   // Clear any existing SVG contents
-  d3.select('#scatter-plot-svg').selectAll('*').remove();
+  d3.select('#earthquake-scatter-plot-svg').selectAll('*').remove();
 
   // Get the container dimensions
-  const svg = d3.select('#scatter-plot-svg');
+  const svg = d3.select('#earthquake-scatter-plot-svg');
   const { width, height } = svg.node().getBoundingClientRect();
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 

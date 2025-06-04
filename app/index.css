@@ -27,26 +27,51 @@ svg {
     flex-direction: row;
 }
 
-.details-container {
+.right-container {
     width: 35%;
     display: flex;
     flex-direction: column;
 }
 
-.map-container {
+.left-container {
     width: 65%;
     height: 100%;
     border-right: solid 1px black;
-    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
-.line-chart-container, .scatter-plot-container, .bar-chart-container {
+.map-container {
+    position: relative;
+    width: 100%;
+    height: calc(100% * 2/3);
+    border-bottom: solid 1px black;
+}
+
+.earthquake-scatter-plot-container, 
+.hurricane-scatter-plot-container, 
+.drought-scatter-plot-container {
     height: calc(100% / 3);
     padding: 16px;
 }
 
-.line-chart-container, .scatter-plot-container {
+.earthquake-scatter-plot-container, .hurricane-scatter-plot-container {
     border-bottom: solid 1px black;
+}
+
+.country-data {
+    height: calc(100% / 3);
+    display: flex;
+    flex-direction: row;
+}
+
+.line-chart-container, .bar-chart-container {
+    width: 50%;
+    height: 100%;
+}
+
+.line-chart-container {
+    border-right: solid 1px black;
 }
 
 #loading-screen {
@@ -82,7 +107,7 @@ svg {
     flex-direction: row;
     align-items: center;
     gap: 24px;
-    padding: 50px;
+    padding: 24px;
 }
 
 #year-slider {

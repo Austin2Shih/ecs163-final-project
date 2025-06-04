@@ -11,7 +11,7 @@ export default function displayMap() {
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 
   // create margins
-  const margin = { top: 120, right: 0, bottom: 120, left: 0 };
+  const margin = { top: 70, right: 0, bottom: 50, left: 0 };
   const contentWidth = width - margin.left - margin.right;
   const contentHeight = height - margin.top - margin.bottom;
 
@@ -73,7 +73,7 @@ export default function displayMap() {
     .append('text')
     .attr('id', 'map-title')
     .attr('x', width / 2)
-    .attr('y', margin.top / 2)
+    .attr('y', margin.top * 2 / 3)
     .attr('text-anchor', 'middle')
     .style('font-size', '1.5rem')
     .text(`Natural Disasters - Year ${appState.selectedYear} ${convertIdToName(appState.selectedCountry) || ''}`);
