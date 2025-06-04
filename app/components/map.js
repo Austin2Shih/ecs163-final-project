@@ -2,7 +2,7 @@ import appState from '../appState.js';
 import { updateDisplay, addDisplayUpdateStep } from '../utils/updateDisplay.js';
 
 export default function displayMap() {
-  const { countryShapeData, disasterData } = appState.data;
+  const { countryShapeData, disasterData, hurricaneData } = appState.data;
 
   // get map svg container and its width and height
   const svg = d3.select('#map-svg');
@@ -137,28 +137,42 @@ export default function displayMap() {
       return screenArea > 1500 ? 1 : 0;
     });
 
-  const disasterColor = d3
-    .scaleOrdinal()
-    .domain(['Storm', 'Earthquake', 'Drought'])
-    .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
+//   const disasterColor = d3
+//     .scaleOrdinal()
+//     .domain(['Storm', 'Earthquake', 'Drought'])
+//     .range(['#1f77b4', '#d62728', '#2ca02c']); // blue, red, green
 
-  const disastersWithCoords = disasterData.filter(
-    (d) => d.Latitude && d.Longitude
+  const earthquakesWithCoords = disasterData.filter(
+    (d) => d.Latitude && d.Longitude && d['Disaster Type'] === 'Earthquake'
   );
 
   mapGroup
     .selectAll('circle.disaster')
-    .data(disastersWithCoords)
+    .data(earthquakesWithCoords)
     .enter()
     .append('circle')
     .attr('class', 'disaster')
     .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
     .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
-    .attr('r', 3)
-    .attr('fill', (d) => disasterColor(d['Disaster Type']))
-    .attr('opacity', 0.6)
-    .attr('stroke', '#333')
+    .attr('r', (d) => Math.pow(2, +d['Magnitude']) * 0.075)
+    .attr('fill', '#d62728')
+    .attr('opacity', 0.3)
+    .attr('stroke', '#000')
     .attr('stroke-width', 0.2);
+
+  mapGroup
+    .selectAll('circle.hurricane')
+    .data(hurricaneData)
+    .enter()
+    .append('circle')
+    .attr('class', 'hurricane')
+    .attr('cx', (d) => projection([d.lon, d.lat])[0])
+    .attr('cy', (d) => projection([d.lon, d.lat])[1])
+    .attr('r', (d) => d.wind * 0.1)
+    .attr('fill', '#1f77b4')
+    .attr('opacity', 0.3)
+    .attr('stroke', '#000')
+    .attr('stroke-width', 0.3);
 
   // create zoom behavior generator
   const zoom = d3

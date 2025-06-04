@@ -8,6 +8,7 @@ const appState = {
         disasterData: null,
         countryShapeData: null,
         temperatureData: null,
+        hurricaneData: null,
     }
 }
 

@@ -12,7 +12,8 @@ Promise.all([
     loadExcelAsJSON('./data/em-dat.xlsx'),
     d3.csv('./data/country-codes.csv'),
     d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"),
-    d3.csv('./data/annual-mean-global-surface-temp.csv')
+    d3.csv('./data/annual-mean-global-surface-temp.csv'),
+    d3.json('./data/hurricanes.json')
 ])
 .then(startApp)
 
@@ -20,7 +21,8 @@ function startApp([
     disasterData, 
     countryCodeData, 
     countryShapeData,
-    temperatureData
+    temperatureData,
+    hurricaneData
 ]
 ) {
     document.getElementById("loading-screen").style.display = "none";
@@ -31,6 +33,8 @@ function startApp([
     appState.data.countryCodeData = countryCodeData;
     appState.data.countryShapeData = countryShapeData;
     appState.data.temperatureData = temperatureData;
+    appState.data.hurricaneData = hurricaneData.filter(d => d.year >= 1960);
+
     initCountryCodeConversionMaps()
 
     displayMap();
