@@ -286,9 +286,6 @@ addYearDisplayUpdateStep(() => {
       [width, height],
     ])
     .on('zoom', (event) => {
-      // Disable zoom during animation
-      if (appState.isAnimating) return;
-      
       mapGroup.attr('transform', event.transform);
       const zoomLevel = event.transform.k;
       // keep font-size the same as we zoom in. Also, once the country is large enough on the screen, display label.
@@ -304,15 +301,6 @@ addYearDisplayUpdateStep(() => {
         });
     });
 
-  // add zoom, but disable during animation
+  // add zoom
   svg.call(zoom);
-  
-  // Disable zoom during animation
-  addYearDisplayUpdateStep(() => {
-    if (appState.isAnimating) {
-      svg.on('.zoom', null);
-    } else {
-      svg.call(zoom);
-    }
-  });
 }

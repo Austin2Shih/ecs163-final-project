@@ -2,20 +2,18 @@ import appState from '../appState.js';
 import { updateYearDisplay } from '../utils/updateDisplay.js';
 
 export function startTimelineAnimation() {
-    console.log('Starting timeline animation...');
+
     
-    // Hide right panel during animation
     hideRightPanel();
     
-    // Set animation state
+    //set app state
     appState.isAnimating = true;
     appState.isInteractionEnabled = false;
     appState.selectedYear = 1950;
     
-    // Disable country interaction
+    //cant interact with conutry during animation
     disableCountryInteraction();
     
-    // Start the animation directly - no overlays
     animateYear();
 }
 
@@ -57,10 +55,7 @@ function animateYear() {
     const currentYear = appState.selectedYear;
     const startYear = 1950;
     const endYear = 2024;
-    
-    console.log('Animating year:', currentYear); // Debug log
-    
-    // Trigger year update (this will update your map automatically)
+
     updateYearDisplay();
     
     // Continue animation
@@ -77,24 +72,19 @@ function completeAnimation() {
     appState.isAnimating = false;
     appState.animationComplete = true;
     
-    // Directly enable interactive mode - no popups
+    //interactive mode after finishing animation
     setTimeout(() => {
         enableInteractiveMode();
-    }, 500); // Small delay for smooth transition
+    }, 500);
 }
 
 function enableInteractiveMode() {
-    // Enable interactions
     appState.isInteractionEnabled = true;
     enableCountryInteraction();
     
-    // Show right panel
     showRightPanel();
     
-    // Call the main app's interactive mode function
     if (window.enableInteractiveMode) {
         window.enableInteractiveMode();
     }
-    
-    console.log('Interactive mode enabled - you can now click on countries!');
 }

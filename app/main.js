@@ -7,7 +7,6 @@ import displayLineChart from "./components/linechart.js";
 import displayScatterPlot from "./components/scatterplot.js";
 import { initCountryCodeConversionMaps } from "./utils/convertCountryCode.js";
 import filterUnusedDisasters from "./utils/filterUnusedDisasters.js";
-import initYearSlider from "./components/yearSlider.js";
 import { startTimelineAnimation } from "./components/timelineAnimation.js"; // Add this import
 
 Promise.all([
@@ -38,43 +37,37 @@ function startApp([
 
     initCountryCodeConversionMaps();
     
-    // Initialize animation properties
     appState.isInteractionEnabled = false;
     appState.animationComplete = false;
     
-    // Hide right panel initially by adding CSS
+    //hide right panel
     addInitialStyles();
     
-    // Only display the map initially (no right panel charts yet)
+    //only display map without the right panel
     displayMap();
     
-    // Hide the year slider initially since animation will control the year
-    hideYearSlider();
-    
-    // Show start button instead of auto-starting
+    //start animation button
     createStartButton();
 }
 
 function addInitialStyles() {
-    // Create and add CSS to hide right panel during animation
+    //hiding right panel css - need to add hide bottom 
     const style = document.createElement('style');
     style.id = 'animation-initial-styles';
     style.textContent = `
         /* Hide right panel initially */
         .right-panel, .charts-container, .chart-container {
             display: none !important;
-            transition: all 0.5s ease;
         }
         
         /* Hide year slider initially */
         .year-slider-container {
-            display: none;
+            display: none !important;
         }
         
         /* Make map container full width during animation */
         .map-container, #map-svg {
             width: 100% !important;
-            transition: width 0.5s ease;
         }
         
         /* Styles for when interactive mode is enabled */
@@ -85,64 +78,31 @@ function addInitialStyles() {
         }
         
         body.interactive-mode .year-slider-container {
-            display: block;
-        }
-        
-        body.interactive-mode .map-container,
-        body.interactive-mode #map-svg {
-            width: 70% !important; /* Adjust this to your normal layout */
+            display: none !important;
         }
     `;
     document.head.appendChild(style);
 }
 
-function hideYearSlider() {
-    // Hide the year slider during animation
-    const yearSliderContainer = document.querySelector('.year-slider-container');
-    if (yearSliderContainer) {
-        yearSliderContainer.style.display = 'none';
-    }
-}
-
-function showYearSlider() {
-    // Show the year slider after animation
-    const yearSliderContainer = document.querySelector('.year-slider-container');
-    if (yearSliderContainer) {
-        yearSliderContainer.style.display = 'block';
-    } else {
-        // Initialize year slider if it doesn't exist
-        initYearSlider();
-    }
-}
-
-// Function to enable interactive mode after animation completes
-// This will be called from the timeline animation
-export function enableInteractiveMode() {
-    console.log('Enabling interactive mode...');
+function enableInteractiveMode() {
     
-    // Add interactive mode class to body
+    // interactive mode
     document.body.classList.add('interactive-mode');
-    
-    // Update app state
+
     appState.isInteractionEnabled = true;
     appState.animationComplete = true;
-    appState.selectedYear = null; // Show all years initially
+    appState.selectedYear = null;
     
-    // Initialize and show all the charts
+    //initialize and show all charts after animation complete
     setTimeout(() => {
         displayLineChart();
         displayScatterPlot();
         displayBarChart();
-        
-        // Initialize year slider
-        initYearSlider();
-        showYearSlider();
-        
-        console.log('Interactive mode fully enabled!');
-    }, 500); // Small delay to ensure smooth transition
+
+    }, 500); //small delay
 }
 
-// Make this function available globally so timeline animation can call it
+//make global function
 window.enableInteractiveMode = enableInteractiveMode;
 
 function createStartButton() {

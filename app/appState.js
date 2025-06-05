@@ -8,7 +8,7 @@ const appState = {
     //properties for animated slideshow
     isAnimating: false,
     animationComplete: false,
-    animationSpeed: 150,
+    animationSpeed: 500,
     isInteractionEnabled: false,
 
     data: {
