@@ -30,10 +30,12 @@ function aggregateDataByCountry(disasterData, disasterType) {
       }
     });
   } else {
-    // For other disaster types, just normalize the year field
+    // For other disaster types, just normalize the year field and ensure ISO code is used
     processedData = disasterData.map((d) => ({
       ...d,
       year: d['Start Year'],
+      // Ensure we're using the correct ISO code
+      ISO: d.ISO || d['Country'],
     }));
   }
 
@@ -43,7 +45,7 @@ function aggregateDataByCountry(disasterData, disasterType) {
   );
 
   // Create all possible country-year combinations
-  const uniqueCountries = new Set(validData.map((d) => d.ISO || d['Country']));
+  const uniqueCountries = new Set(validData.map((d) => d.ISO));
   const years = d3.range(1960, 2025);
   const allCombinations = [];
 
@@ -76,7 +78,7 @@ function aggregateDataByCountry(disasterData, disasterType) {
         countryInfo: group[0] || null,
       };
     },
-    (d) => d.ISO || d['Country'],
+    (d) => d.ISO, // Always use ISO code for grouping
     (d) => d.year
   );
 
@@ -252,7 +254,16 @@ function displayScatterPlot(selectedCountry, disasterType) {
   // Filter out points with mean 0
   aggregatedData = aggregatedData.filter((d) => d[2].mean > 0);
 
-  // Calculate scales using the aggregated dataset
+  // Filter for selected country
+  if (selectedCountry) {
+    aggregatedData = aggregatedData.filter((d) => {
+      // For all disaster types, only use ISO codes for comparison
+      // Since we've normalized the data in aggregateDataByCountry
+      return d[0] === selectedCountryISO3;
+    });
+  }
+
+  // Calculate scales using the filtered dataset
   const yScale = d3
     .scaleLinear()
     .domain([0, d3.max(aggregatedData, (d) => d[2].mean) * 1.3])
@@ -266,17 +277,6 @@ function displayScatterPlot(selectedCountry, disasterType) {
 
   // Update radius scale
   const radiusScale = getRadiusScale();
-
-  // Filter aggregated data
-  aggregatedData = aggregatedData.filter((d) => {
-    if (!d || !d[2].countryInfo) return false;
-    const matchesCountry =
-      !selectedCountry ||
-      d[0] === selectedCountryISO3 ||
-      (d[2].countryInfo['affectedCountries'] &&
-        d[2].countryInfo['affectedCountries'].includes(selectedCountry));
-    return matchesCountry;
-  });
 
   // Update scales
   const xScale = d3
@@ -346,29 +346,14 @@ function displayScatterPlot(selectedCountry, disasterType) {
     .attr('cx', (d) => xScale(new Date(d[1], 0, 1)))
     .attr('cy', (d) => yScale(d[2].mean))
     .attr('r', (d) => radiusScale(d[2].count))
-    .style('opacity', (d) => {
-      if (!selectedCountry) return 0.6;
-      const isInCountry =
-        d[0] === selectedCountryISO3 ||
-        (d[2].countryInfo['affectedCountries'] &&
-          d[2].countryInfo['affectedCountries'].includes(selectedCountry));
-      return isInCountry ? 0.6 : 0.1;
-    });
+    .style('opacity', 0.6); // Since we've already filtered, all visible dots should have the same opacity
 
   // Update tooltip content
   svg
     .select('.dots-group')
     .selectAll('circle')
     .on('mouseover', function (event, d) {
-      const isInCountry =
-        !selectedCountry ||
-        d[0] === selectedCountryISO3 ||
-        (d[2].countryInfo['affectedCountries'] &&
-          d[2].countryInfo['affectedCountries'].includes(selectedCountry));
-
-      d3.select(this)
-        .style('opacity', isInCountry ? 1 : 0.3)
-        .style('stroke-width', 2);
+      d3.select(this).style('opacity', 1).style('stroke-width', 2);
 
       tooltip.style('display', 'block').style('opacity', 1);
 
@@ -437,20 +422,8 @@ function displayScatterPlot(selectedCountry, disasterType) {
     })
     .on('mouseout', function (event, d) {
       // Remove highlight and tooltip
-      const isInCountry =
-        !selectedCountry ||
-        d[0] === selectedCountryISO3 ||
-        (d[2].countryInfo['affectedCountries'] &&
-          d[2].countryInfo['affectedCountries'].includes(selectedCountry));
+      d3.select(this).style('opacity', 0.6).style('stroke-width', 0.5);
 
-      d3.select(this)
-        .style('opacity', isInCountry ? 0.6 : 0.1)
-        .style('stroke-width', 0.5);
-
-      tooltip.style('display', 'none').style('opacity', 0);
-    })
-    // Add mouseleave event on the SVG to ensure tooltip is hidden when mouse leaves the chart
-    .on('mouseleave', function () {
       tooltip.style('display', 'none').style('opacity', 0);
     });
 
