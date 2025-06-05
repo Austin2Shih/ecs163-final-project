@@ -7,7 +7,7 @@ import {
 } from '../utils/convertCountryCode.js';
 import { addDisplayUpdateStep } from '../utils/updateDisplay.js';
 
-function aggregateDataByCountry(disasterData, disasterType) {
+function aggregateDataByCountry(disasterData, disasterType, selectedCountry) {
   // First, expand hurricane data by affected countries
   let processedData;
   if (disasterType === 'Tropical cyclone') {
@@ -50,6 +50,49 @@ function aggregateDataByCountry(disasterData, disasterType) {
     (d) => d.year >= 1960 && d.year <= 2024
   );
 
+  // If a country is selected, return individual events
+  if (selectedCountry) {
+    const selectedCountryName = convertIdToName(selectedCountry);
+    const selectedCountryISO2 = convertNameToISO2(selectedCountryName);
+    const selectedCountryISO3 = convertISO2ToISO3(selectedCountryISO2);
+    const selectedCountryId = convertISO2ToId(selectedCountryISO2);
+
+    let countryData;
+    if (disasterType === 'Tropical cyclone') {
+      countryData = validData.filter(
+        (d) =>
+          d.ISO === selectedCountryISO3 ||
+          (d.affectedCountries &&
+            d.affectedCountries.includes(selectedCountryId))
+      );
+    } else {
+      countryData = validData.filter((d) => d.ISO === selectedCountryISO3);
+    }
+
+    // Transform data to match the expected format
+    return countryData
+      .map((d) => {
+        const value =
+          disasterType === 'Tropical cyclone'
+            ? (d.wind || 0) * 0.868976 // Convert to knots
+            : disasterType === 'Flood'
+            ? parseFloat(d["Total Damage ('000 US$)"]) || 0
+            : parseFloat(d['Magnitude']) || 0;
+
+        return [
+          d.ISO,
+          d.year,
+          {
+            mean: value, // Use actual value instead of mean for individual events
+            count: 1,
+            countryInfo: d,
+          },
+        ];
+      })
+      .filter((d) => d[2].mean > 0); // Filter out zero values
+  }
+
+  // For worldwide view, use aggregated data
   // Create all possible country-year combinations
   const uniqueCountries = new Set(validData.map((d) => d.ISO));
   const years = d3.range(1960, 2025);
@@ -188,7 +231,7 @@ function displayScatterPlot(selectedCountry, disasterType) {
       .attr('class', 'x-axis')
       .call(d3.axisBottom(xScale).ticks(10).tickFormat(d3.timeFormat('%Y')));
 
-    // Add Y axis (will be updated with data)
+    // Add Y axis
     g.append('g').attr('class', 'y-axis');
 
     // Add grid lines
@@ -244,10 +287,6 @@ function displayScatterPlot(selectedCountry, disasterType) {
   const contentHeight = height - margin.top - margin.bottom;
 
   // Get the data and process it
-  const selectedCountryName = convertIdToName(selectedCountry);
-  const selectedCountryISO2 = convertNameToISO2(selectedCountryName);
-  const selectedCountryISO3 = convertISO2ToISO3(selectedCountryISO2);
-
   let disasterData = null;
   if (disasterType === 'Earthquake') {
     disasterData = appState.data.earthquakeData;
@@ -258,33 +297,14 @@ function displayScatterPlot(selectedCountry, disasterType) {
   }
 
   // Aggregate the data first
-  let aggregatedData = aggregateDataByCountry(disasterData, disasterType);
+  let aggregatedData = aggregateDataByCountry(
+    disasterData,
+    disasterType,
+    selectedCountry
+  );
 
   // Filter out points with mean 0
   aggregatedData = aggregatedData.filter((d) => d[2].mean > 0);
-
-  // Filter for selected country
-  if (selectedCountry) {
-    if (disasterType === 'Tropical cyclone') {
-      // For hurricanes, check if the country is in the affected countries
-      // We've already expanded the data by affected countries in aggregateDataByCountry
-      const selectedCountryId = convertISO2ToId(selectedCountryISO2);
-      aggregatedData = aggregatedData.filter((d) => {
-        // Check if this data point is for the selected country
-        return (
-          d[0] === selectedCountryISO3 ||
-          (d[2].countryInfo &&
-            d[2].countryInfo.affectedCountries &&
-            d[2].countryInfo.affectedCountries.includes(selectedCountryId))
-        );
-      });
-    } else {
-      // For other disasters, use strict ISO code matching
-      aggregatedData = aggregatedData.filter((d) => {
-        return d[0] === selectedCountryISO3;
-      });
-    }
-  }
 
   // Calculate scales using the filtered dataset
   const yScale = d3
@@ -294,6 +314,9 @@ function displayScatterPlot(selectedCountry, disasterType) {
 
   // Create radius scale based on aggregated dataset
   const getRadiusScale = () => {
+    if (selectedCountry) {
+      return () => 5; // Fixed radius for individual events
+    }
     const maxCount = d3.max(aggregatedData, (d) => d[2].count);
     return d3.scaleSqrt().domain([0, maxCount]).range([3, 15]);
   };
@@ -368,8 +391,8 @@ function displayScatterPlot(selectedCountry, disasterType) {
     .merge(dotsEnter)
     .attr('cx', (d) => xScale(new Date(d[1], 0, 1)))
     .attr('cy', (d) => yScale(d[2].mean))
-    .attr('r', (d) => radiusScale(d[2].count))
-    .style('opacity', 0.6); // Since we've already filtered, all visible dots should have the same opacity
+    .attr('r', (d) => (selectedCountry ? 5 : radiusScale(d[2].count)))
+    .style('opacity', 0.6);
 
   // Update tooltip content
   svg
@@ -398,27 +421,30 @@ function displayScatterPlot(selectedCountry, disasterType) {
         return d3.format('.1f')(value);
       };
 
-      const content = `
+      let content = `
         <strong>${
           countryInfo['Location'] ||
           countryInfo['Country'] ||
           'Location Unknown'
         }</strong><br/>
         <strong>Year:</strong> ${d[1]}<br/>
-        <strong>Average ${
-          disasterType === 'Tropical cyclone'
-            ? 'Wind Speed'
-            : disasterType === 'Flood'
-            ? 'Damage'
-            : 'Magnitude'
-        }:</strong> ${formatValue(d[2].mean)}<br/>
-        <strong>Number of Events:</strong> ${formatNumber(d[2].count)}<br/>
-        ${
-          countryInfo['Disaster Subtype']
-            ? `<strong>Subtype:</strong> ${countryInfo['Disaster Subtype']}<br/>`
-            : ''
-        }
-      `;
+        <strong>${selectedCountry ? '' : 'Average '}${
+        disasterType === 'Tropical cyclone'
+          ? 'Wind Speed'
+          : disasterType === 'Flood'
+          ? 'Damage'
+          : 'Magnitude'
+      }:</strong> ${formatValue(d[2].mean)}<br/>`;
+
+      if (!selectedCountry) {
+        content += `<strong>Number of Events:</strong> ${formatNumber(
+          d[2].count
+        )}<br/>`;
+      }
+
+      if (countryInfo['Disaster Subtype']) {
+        content += `<strong>Subtype:</strong> ${countryInfo['Disaster Subtype']}<br/>`;
+      }
 
       tooltip.html(content);
 
@@ -459,11 +485,19 @@ function displayScatterPlot(selectedCountry, disasterType) {
   svg
     .select('.y-label')
     .text(
-      disasterType === 'Tropical cyclone'
-        ? 'Average Wind Speed per Year (knots)'
-        : disasterType === 'Flood'
-        ? 'Average Total Damage per Year (USD Billions)'
-        : 'Average Magnitude per Year'
+      `${
+        disasterType === 'Tropical cyclone'
+          ? 'Wind Speed'
+          : disasterType === 'Flood'
+          ? 'Total Damage'
+          : 'Magnitude'
+      } ${
+        disasterType === 'Tropical cyclone'
+          ? '(knots)'
+          : disasterType === 'Flood'
+          ? '(USD Billions)'
+          : ''
+      }`
     );
 
   svg
@@ -472,8 +506,8 @@ function displayScatterPlot(selectedCountry, disasterType) {
       `${
         disasterType === 'Tropical cyclone' ? 'Hurricane' : disasterType
       } Events ${
-        selectedCountryName ? `in ${selectedCountryName}` : 'Worldwide'
-      } (Yearly Averages)`
+        selectedCountry ? `in ${convertIdToName(selectedCountry)}` : 'Worldwide'
+      }`
     );
 }
 
