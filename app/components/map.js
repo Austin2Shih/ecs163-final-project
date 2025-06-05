@@ -248,27 +248,37 @@ export default function displayMap() {
     .attr('stroke-width', 0.2);
 
   mapGroup
-    .selectAll('circle.hurricane')
+    .selectAll('path.hurricane')
     .data(
       hurricaneData.filter(
         (d) => !appState.selectedYear || +d.year === +appState.selectedYear
       )
     )
     .enter()
-    .append('circle')
+    .append('path')
     .attr('class', 'hurricane')
     .attr('pointer-events', 'none')
-    .attr('cx', (d) => projection([d.lon, d.lat])[0])
-    .attr('cy', (d) => projection([d.lon, d.lat])[1])
-    .attr('r', (d) => d.wind * 0.1)
+    .attr('d', (d) => {
+      const [cx, cy] = projection([d.lon, d.lat]);
+      const size = d.wind * 0.1;
+      return `M ${cx},${cy - size} 
+              L ${cx - size * 0.866},${cy + size / 2}
+              L ${cx + size * 0.866},${cy + size / 2}
+              Z`;
+    })
     .attr('fill', '#1f77b4')
     .attr('opacity', 0.55)
     .attr('stroke', '#000')
     .attr('stroke-width', 0.3);
 
-  // Add flood visualization
+  function getFloodSize(d) {
+    const totalAffected = parseInt(d['Total Affected']) || 0;
+    return Math.max(Math.min(Math.sqrt(totalAffected) * 0.005, 30), 5);
+  }
+
+  // add flood data
   mapGroup
-    .selectAll('circle.flood')
+    .selectAll('rect.flood')
     .data(
       floodData.filter(
         (d) =>
@@ -276,20 +286,25 @@ export default function displayMap() {
       )
     )
     .enter()
-    .append('circle')
+    .append('rect')
     .attr('class', 'flood')
     .attr('pointer-events', 'none')
-    .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
-    .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
-    .attr('r', (d) => {
-      // Scale radius based on total affected population
-      const totalAffected = parseInt(d['Total Affected']) || 0;
-      return Math.max(3, Math.min(15, Math.sqrt(totalAffected) * 0.001));
+    .attr('x', (d) => {
+      const [cx, _] = projection([+d.Longitude, +d.Latitude]);
+      const size = getFloodSize(d);
+      return cx - size / 2;
     })
-    .attr('fill', '#2ca02c') // Green color for floods
-    .attr('opacity', 0.7)
+    .attr('y', (d) => {
+      const [_, cy] = projection([+d.Longitude, +d.Latitude]);
+      const size = getFloodSize(d);
+      return cy - size / 2;
+    })
+    .attr('width', (d) => getFloodSize(d))
+    .attr('height', (d) => getFloodSize(d))
+    .attr('fill', '#2ca02c')
+    .attr('opacity', 0.55)
     .attr('stroke', '#000')
-    .attr('stroke-width', 0.2);
+    .attr('stroke-width', 0.3);
 
   addYearDisplayUpdateStep(() => {
     const filteredEarthquakes = disasterData.filter(
@@ -327,7 +342,7 @@ export default function displayMap() {
           .attr('fill', '#d62728')
           .attr('opacity', 0.55)
           .attr('stroke', '#000')
-          .attr('stroke-width', 0.2),
+          .attr('stroke-width', 0.3),
       (update) =>
         update
           .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
@@ -337,18 +352,24 @@ export default function displayMap() {
 
     // Hurricanes
     const hurricanes = mapGroup
-      .selectAll('circle.hurricane')
+      .selectAll('path.hurricane')
       .data(filteredHurricanes, (d) => d.id);
+
 
     hurricanes.join(
       (enter) =>
         enter
-          .append('circle')
+          .append('path')
           .attr('class', 'hurricane')
           .attr('pointer-events', 'none')
-          .attr('cx', (d) => projection([d.lon, d.lat])[0])
-          .attr('cy', (d) => projection([d.lon, d.lat])[1])
-          .attr('r', (d) => d.wind * 0.1)
+          .attr('d', (d) => {
+            const [cx, cy] = projection([d.lon, d.lat]);
+            const size = d.wind * 0.1;
+            return `M ${cx},${cy - size} 
+                    L ${cx - size * 0.866},${cy + size / 2}
+                    L ${cx + size * 0.866},${cy + size / 2}
+                    Z`;
+          })
           .attr('fill', '#1f77b4')
           .attr('opacity', 0.55)
           .attr('stroke', '#000')
@@ -362,33 +383,39 @@ export default function displayMap() {
 
     // Floods
     const floods = mapGroup
-      .selectAll('circle.flood')
-      .data(filteredFloods, (d) => d.DisasterId || d.id);
+      .selectAll('rect.flood')
+      .data(filteredFloods, (d) => d.id)
 
     floods.join(
       (enter) =>
         enter
-          .append('circle')
+          .append('rect')
           .attr('class', 'flood')
           .attr('pointer-events', 'none')
-          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
-          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1])
-          .attr('r', (d) => {
-            // Scale radius based on total affected population
-            const totalAffected = parseInt(d['Total Affected']) || 0;
-            return Math.max(3, Math.min(15, Math.sqrt(totalAffected) * 0.001));
+          .attr('x', (d) => {
+            const [cx, _] = projection([+d.Longitude, +d.Latitude]);
+            const size = getFloodSize(d);
+            return cx - size / 2;
           })
+          .attr('y', (d) => {
+            const [_, cy] = projection([+d.Longitude, +d.Latitude]);
+            const size = getFloodSize(d);
+            return cy - size / 2;
+          })
+          .attr('width', (d) => getFloodSize(d))
+          .attr('height', (d) => getFloodSize(d))
           .attr('fill', '#2ca02c')
-          .attr('opacity', 0.7)
+          .attr('opacity', 0.55)
           .attr('stroke', '#000')
-          .attr('stroke-width', 0.2),
+          .attr('stroke-width', 0.3),
       (update) =>
         update
-          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
-          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1]),
+            .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+            .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1]),
       (exit) => exit.remove()
     );
-  });
+  })
+  
 
   // create the legend
   const legendHeight = 20;
