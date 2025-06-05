@@ -1,13 +1,19 @@
-import appState from "./appState.js";
-import loadExcelAsJSON from "./utils/loadExcelAsJSON.js";
+import appState from './appState.js';
+import loadExcelAsJSON from './utils/loadExcelAsJSON.js';
 
-import displayMap from "./components/map.js";
-import displayBarChart from "./components/barchart.js";
-import displayLineChart from "./components/linechart.js";
-import displayScatterPlot from "./components/scatterplot.js";
-import { initCountryCodeConversionMaps } from "./utils/convertCountryCode.js";
-import filterUnusedDisasters from "./utils/filterUnusedDisasters.js";
-import { startTimelineAnimation } from "./components/timelineAnimation.js"; // Add this import
+import displayMap from './components/map.js';
+import displayBarChart from './components/barchart.js';
+import displayLineChart from './components/linechart.js';
+import {
+  displayEarthquakeScatterPlot,
+  displayFloodScatterPlot,
+  displayHurricaneScatterPlot,
+} from './components/scatterplot.js';
+import { initCountryCodeConversionMaps } from './utils/convertCountryCode.js';
+import filterUnusedDisasters from './utils/filterUnusedDisasters.js';
+import initYearSlider from './components/yearSlider.js';
+import { startTimelineAnimation } from "./components/timelineAnimation.js";
+
 
 Promise.all([
     loadExcelAsJSON('./data/em-dat.xlsx'),
@@ -55,13 +61,7 @@ function addInitialStyles() {
     const style = document.createElement('style');
     style.id = 'animation-initial-styles';
     style.textContent = `
-        /* Hide right panel initially */
         .right-panel, .charts-container, .chart-container {
-            display: none !important;
-        }
-        
-        /* Hide year slider initially */
-        .year-slider-container {
             display: none !important;
         }
         
