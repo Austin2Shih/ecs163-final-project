@@ -65,16 +65,14 @@ function startApp([
 }
 
 function addInitialStyles() {
-  // Create and add CSS to hide right panel during animation
+  //css to hide the graphs during animation
   const style = document.createElement('style');
   style.id = 'animation-initial-styles';
   style.textContent = `
-      /* Hide right panel initially */
       .right-panel, .charts-container, .chart-container {
           display: none !important;
       }
       
-      /* Hide year slider initially */
       .year-slider-container {
           display: none !important;
       }
