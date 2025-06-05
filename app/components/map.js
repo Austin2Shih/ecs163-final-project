@@ -355,7 +355,6 @@ export default function displayMap() {
       .selectAll('path.hurricane')
       .data(filteredHurricanes, (d) => d.id);
 
-
     hurricanes.join(
       (enter) =>
         enter
@@ -384,7 +383,7 @@ export default function displayMap() {
     // Floods
     const floods = mapGroup
       .selectAll('rect.flood')
-      .data(filteredFloods, (d) => d.id)
+      .data(filteredFloods, (d) => d.id);
 
     floods.join(
       (enter) =>
@@ -410,17 +409,100 @@ export default function displayMap() {
           .attr('stroke-width', 0.3),
       (update) =>
         update
-            .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
-            .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1]),
+          .attr('cx', (d) => projection([+d.Longitude, +d.Latitude])[0])
+          .attr('cy', (d) => projection([+d.Longitude, +d.Latitude])[1]),
       (exit) => exit.remove()
     );
-  })
-  
+  });
 
   // create the legend
   const legendHeight = 20;
   const legendWidth = contentWidth / 4;
 
+  // Add disaster type legend to top left
+  const disasterLegend = svg
+    .append('g')
+    .attr('class', 'disaster-legend')
+    .attr('transform', `translate(40, ${margin.top / 2})`);
+
+  // Add background rectangle first (so it's behind everything)
+  disasterLegend
+    .append('rect')
+    .attr('x', -10)
+    .attr('y', -30)
+    .attr('width', 130)
+    .attr('height', 110)
+    .attr('fill', 'white')
+    .attr('stroke', '#666')
+    .attr('stroke-width', 1)
+    .attr('rx', 5)
+    .attr('ry', 5);
+
+  // Legend items data
+  const legendItems = [
+    { type: 'Earthquake', color: '#d62728', shape: 'circle' },
+    { type: 'Hurricane', color: '#1f77b4', shape: 'triangle' },
+    { type: 'Flood', color: '#2ca02c', shape: 'square' },
+  ];
+
+  // Create legend items
+  const legendItem = disasterLegend
+    .selectAll('g')
+    .data(legendItems)
+    .enter()
+    .append('g')
+    .attr('transform', (d, i) => `translate(0, ${i * 25})`);
+
+  // Add shapes
+  legendItem.each(function (d) {
+    const g = d3.select(this);
+    if (d.shape === 'circle') {
+      g.append('circle')
+        .attr('cx', 10)
+        .attr('cy', 10)
+        .attr('r', 6)
+        .attr('fill', d.color)
+        .attr('opacity', 0.55)
+        .attr('stroke', '#000')
+        .attr('stroke-width', 0.3);
+    } else if (d.shape === 'triangle') {
+      g.append('path')
+        .attr('d', `M 10,4 L 4,16 L 16,16 Z`)
+        .attr('fill', d.color)
+        .attr('opacity', 0.55)
+        .attr('stroke', '#000')
+        .attr('stroke-width', 0.3);
+    } else if (d.shape === 'square') {
+      g.append('rect')
+        .attr('x', 4)
+        .attr('y', 4)
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('fill', d.color)
+        .attr('opacity', 0.55)
+        .attr('stroke', '#000')
+        .attr('stroke-width', 0.3);
+    }
+  });
+
+  // Add text labels
+  legendItem
+    .append('text')
+    .attr('x', 25)
+    .attr('y', 14)
+    .text((d) => d.type)
+    .style('font-size', '14px');
+
+  // Add title
+  disasterLegend
+    .append('text')
+    .attr('x', 0)
+    .attr('y', -10)
+    .text('Disaster Types')
+    .style('font-size', '16px')
+    .style('font-weight', 'bold');
+
+  // Temperature legend (existing code)
   const legendScale = d3
     .scaleLinear()
     .domain(temperatureColor.domain())
@@ -475,7 +557,7 @@ export default function displayMap() {
     )
     .append('text')
     .style('font-size', '0.75rem')
-    .text(`Temperature change since 1960`);
+    .text('Temperature change since 1960');
 
   // Add the legend axis
   svg
