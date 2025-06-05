@@ -6,6 +6,117 @@ import {
 } from '../utils/convertCountryCode.js';
 import { addDisplayUpdateStep } from '../utils/updateDisplay.js';
 
+function aggregateDataByCountry(disasterData, disasterType) {
+  // First, expand hurricane data by affected countries
+  let processedData;
+  if (disasterType === 'Tropical cyclone') {
+    processedData = [];
+    disasterData.forEach((d) => {
+      if (d.affectedCountries && Array.isArray(d.affectedCountries)) {
+        // Create a copy of the data for each affected country
+        d.affectedCountries.forEach((country) => {
+          processedData.push({
+            ...d,
+            ISO: country, // Use the affected country as the primary country
+            year: d.year,
+          });
+        });
+      } else {
+        // If no affected countries listed, use the primary country
+        processedData.push({
+          ...d,
+          year: d.year,
+        });
+      }
+    });
+  } else {
+    // For other disaster types, just normalize the year field
+    processedData = disasterData.map((d) => ({
+      ...d,
+      year: d['Start Year'],
+    }));
+  }
+
+  // Filter for valid years first
+  const validData = processedData.filter(
+    (d) => d.year >= 1960 && d.year <= 2024
+  );
+
+  // Create all possible country-year combinations
+  const uniqueCountries = new Set(validData.map((d) => d.ISO || d['Country']));
+  const years = d3.range(1960, 2025);
+  const allCombinations = [];
+
+  uniqueCountries.forEach((country) => {
+    years.forEach((year) => {
+      allCombinations.push([country, year]);
+    });
+  });
+
+  // Aggregate data by country and year
+  const aggregatedData = d3.rollup(
+    validData,
+    (group) => {
+      const values = group
+        .map((d) => {
+          if (disasterType === 'Tropical cyclone') {
+            return (d.wind || 0) * 0.868976; // Convert to knots
+          } else if (disasterType === 'Flood') {
+            return parseFloat(d["Total Damage ('000 US$)"]) || 0;
+          } else {
+            return parseFloat(d['Magnitude']) || 0;
+          }
+        })
+        .filter((v) => v > 0); // Filter out zero values
+
+      return {
+        mean: values.length > 0 ? d3.mean(values) : 0,
+        count: values.length,
+        // Store the first event's metadata for country info
+        countryInfo: group[0] || null,
+      };
+    },
+    (d) => d.ISO || d['Country'],
+    (d) => d.year
+  );
+
+  // Convert nested Map to array format and fill in missing years
+  const result = [];
+  allCombinations.forEach(([country, year]) => {
+    const countryData = aggregatedData.get(country);
+    const yearData = countryData ? countryData.get(year) : null;
+
+    // If we have data for this country-year combination, use it
+    // Otherwise, create an empty entry
+    if (yearData) {
+      result.push([country, year, yearData]);
+    } else {
+      // Find any data for this country to get country info
+      let countryInfo = null;
+      if (countryData) {
+        for (const [_, data] of countryData) {
+          if (data.countryInfo) {
+            countryInfo = data.countryInfo;
+            break;
+          }
+        }
+      }
+
+      result.push([
+        country,
+        year,
+        {
+          mean: 0,
+          count: 0,
+          countryInfo: countryInfo,
+        },
+      ]);
+    }
+  });
+
+  return result;
+}
+
 // scatterplot of natural disasters over time
 function displayScatterPlot(selectedCountry, disasterType) {
   const svgId = `#${
@@ -135,87 +246,37 @@ function displayScatterPlot(selectedCountry, disasterType) {
     disasterData = appState.data.hurricaneData;
   }
 
-  // Calculate scales using the full dataset before filtering
+  // Aggregate the data first
+  let aggregatedData = aggregateDataByCountry(disasterData, disasterType);
+
+  // Filter out points with mean 0
+  aggregatedData = aggregatedData.filter((d) => d[2].mean > 0);
+
+  // Calculate scales using the aggregated dataset
   const yScale = d3
     .scaleLinear()
-    .domain([
-      0,
-      disasterType === 'Tropical cyclone'
-        ? d3.max(disasterData, (d) => (d.wind || 0) * 1.3)
-        : disasterType === 'Flood'
-        ? d3.max(
-            disasterData,
-            (d) => parseFloat(d["Total Damage ('000 US$)"]) || 0
-          ) * 1.1
-        : d3.max(disasterData, (d) => (parseFloat(d['Magnitude']) || 0) * 1.3),
-    ])
+    .domain([0, d3.max(aggregatedData, (d) => d[2].mean) * 1.3])
     .range([contentHeight, 0]);
 
-  // Create radius scale based on full dataset
+  // Create radius scale based on aggregated dataset
   const getRadiusScale = () => {
-    if (disasterType === 'Tropical cyclone') {
-      const maxWind = d3.max(disasterData, (d) => (d.wind || 0) * 0.868976);
-      return d3.scaleLinear().domain([0, maxWind]).range([3, 15]);
-    } else if (disasterType === 'Flood') {
-      const maxDamage = d3.max(
-        disasterData,
-        (d) => parseFloat(d["Total Damage ('000 US$)"]) || 0
-      );
-      return d3.scaleSqrt().domain([0, maxDamage]).range([3, 20]);
-    } else {
-      const maxMagnitude = d3.max(
-        disasterData,
-        (d) => parseFloat(d['Magnitude']) || 0
-      );
-      return d3.scaleLinear().domain([0, maxMagnitude]).range([3, 20]);
-    }
+    const maxCount = d3.max(aggregatedData, (d) => d[2].count);
+    return d3.scaleSqrt().domain([0, maxCount]).range([3, 15]);
   };
 
   // Update radius scale
   const radiusScale = getRadiusScale();
 
-  // Filter disaster data after scales are calculated
-  disasterData = disasterData.filter((d) => {
-    if (!d) return false;
-    const startYear = d['Start Year'] ? Number(d['Start Year']) : d['year'];
-    const isInTimeRange = 1960 <= startYear && startYear <= 2024;
+  // Filter aggregated data
+  aggregatedData = aggregatedData.filter((d) => {
+    if (!d || !d[2].countryInfo) return false;
     const matchesCountry =
       !selectedCountry ||
-      d.ISO === selectedCountryISO3 ||
-      d['affectedCountries'].includes(selectedCountry);
-    return (
-      isInTimeRange &&
-      matchesCountry &&
-      (d['Magnitude'] !== null || d['wind'] !== null)
-    );
+      d[0] === selectedCountryISO3 ||
+      (d[2].countryInfo['affectedCountries'] &&
+        d[2].countryInfo['affectedCountries'].includes(selectedCountry));
+    return matchesCountry;
   });
-
-  // Sort data for top 50 after filtering
-  const sortedData = [...disasterData].sort((a, b) => {
-    if (disasterType === 'Tropical cyclone') {
-      return (b.wind || 0) - (a.wind || 0);
-    } else if (disasterType === 'Flood') {
-      return (
-        (parseFloat(b["Total Damage ('000 US$)"]) || 0) -
-        (parseFloat(a["Total Damage ('000 US$)"]) || 0)
-      );
-    } else {
-      return (
-        (parseFloat(b['Magnitude']) || 0) - (parseFloat(a['Magnitude']) || 0)
-      );
-    }
-  });
-
-  const top20Disasters = new Set(
-    sortedData
-      .slice(0, 20)
-      .map(
-        (d) =>
-          d.DisasterId ||
-          d.id ||
-          `${d['Start Year']}-${d.Longitude}-${d.Latitude}`
-      )
-  );
 
   // Update scales
   const xScale = d3
@@ -254,13 +315,7 @@ function displayScatterPlot(selectedCountry, disasterType) {
   const dots = svg
     .select('.dots-group')
     .selectAll('circle')
-    .data(
-      disasterData,
-      (d) =>
-        d.DisasterId ||
-        d.id ||
-        `${d['Start Year']}-${d.Longitude}-${d.Latitude}`
-    );
+    .data(aggregatedData, (d) => `${d[0]}-${d[1]}`); // Use country-year as key
 
   // Remove old dots
   dots.exit().remove();
@@ -288,130 +343,78 @@ function displayScatterPlot(selectedCountry, disasterType) {
   // Update all dots
   dots
     .merge(dotsEnter)
-    .attr('cx', (d) => {
-      const date =
-        disasterType === 'Tropical cyclone'
-          ? new Date(d.year, 0, 1)
-          : new Date(
-              d['Start Year'],
-              (d['Start Month'] || 1) - 1,
-              d['Start Day'] || 1
-            );
-      return xScale(date);
-    })
-    .attr('cy', (d) => {
-      if (disasterType === 'Tropical cyclone') {
-        return yScale((d.wind || 0) * 0.868976);
-      } else if (disasterType === 'Flood') {
-        return yScale(parseFloat(d["Total Damage ('000 US$)"]) || 0);
-      }
-      return yScale(parseFloat(d['Magnitude']) || 0);
-    })
-    .attr('r', (d) => {
-      if (disasterType === 'Tropical cyclone') {
-        const windInKnots = (d.wind || 0) * 0.868976;
-        return radiusScale(windInKnots);
-      } else if (disasterType === 'Flood') {
-        const damage = parseFloat(d["Total Damage ('000 US$)"]) || 0;
-        return radiusScale(damage);
-      } else {
-        const magnitude = parseFloat(d['Magnitude']) || 0;
-        return radiusScale(magnitude);
-      }
-    })
+    .attr('cx', (d) => xScale(new Date(d[1], 0, 1)))
+    .attr('cy', (d) => yScale(d[2].mean))
+    .attr('r', (d) => radiusScale(d[2].count))
     .style('opacity', (d) => {
       if (!selectedCountry) return 0.6;
       const isInCountry =
-        d.ISO === selectedCountryISO3 ||
-        d['affectedCountries'].includes(selectedCountry);
+        d[0] === selectedCountryISO3 ||
+        (d[2].countryInfo['affectedCountries'] &&
+          d[2].countryInfo['affectedCountries'].includes(selectedCountry));
       return isInCountry ? 0.6 : 0.1;
     });
 
-  // Add event listeners
+  // Update tooltip content
   svg
     .select('.dots-group')
     .selectAll('circle')
     .on('mouseover', function (event, d) {
-      const eventId =
-        d.DisasterId ||
-        d.id ||
-        `${d['Start Year']}-${d.Longitude}-${d.Latitude}`;
-      if (!top20Disasters.has(eventId)) return;
-
       const isInCountry =
         !selectedCountry ||
-        d.ISO === selectedCountryISO3 ||
-        d['affectedCountries'].includes(selectedCountry);
+        d[0] === selectedCountryISO3 ||
+        (d[2].countryInfo['affectedCountries'] &&
+          d[2].countryInfo['affectedCountries'].includes(selectedCountry));
+
       d3.select(this)
         .style('opacity', isInCountry ? 1 : 0.3)
         .style('stroke-width', 2);
 
       tooltip.style('display', 'block').style('opacity', 1);
 
-      let date;
-      if (disasterType === 'Tropical cyclone') {
-        date = new Date(d.year, 0, 1);
-      } else {
-        date = new Date(
-          d['Start Year'],
-          (d['Start Month'] || 1) - 1,
-          d['Start Day'] || 1
-        );
-      }
-
+      const countryInfo = d[2].countryInfo;
       const formatNumber = (num) => {
         if (!num) return 'Unknown';
-        if (
-          disasterType === 'Flood' &&
-          num.toString().includes('Total Damage')
-        ) {
-          const valueInThousands =
-            parseFloat(d["Total Damage ('000 US$)"]) || 0;
-          const valueInBillions = valueInThousands / 1000000;
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      };
+
+      const formatValue = (value) => {
+        if (disasterType === 'Flood') {
+          const valueInBillions = value / 1000000;
           return valueInBillions === 0
             ? '$0'
             : `$${d3.format(',.1f')(valueInBillions)}B USD`;
+        } else if (disasterType === 'Tropical cyclone') {
+          return `${d3.format(',.0f')(value)} kts`;
         }
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return d3.format('.1f')(value);
       };
 
       const content = `
         <strong>${
-          d['Location'] || d['Country'] || 'Location Unknown'
+          countryInfo['Location'] ||
+          countryInfo['Country'] ||
+          'Location Unknown'
         }</strong><br/>
-        <strong>Date:</strong> ${
+        <strong>Year:</strong> ${d[1]}<br/>
+        <strong>Average ${
           disasterType === 'Tropical cyclone'
-            ? d.year
-            : date.toLocaleDateString()
-        }<br/>
-        ${
-          disasterType === 'Tropical cyclone'
-            ? `<strong>Wind Speed:</strong> ${(d.wind * 0.868976).toFixed(
-                0
-              )} knots<br/>`
+            ? 'Wind Speed'
             : disasterType === 'Flood'
-            ? `<strong>Total Damage:</strong> ${formatNumber({
-                toString: () => 'Total Damage',
-                "Total Damage ('000 US$)": d["Total Damage ('000 US$)"],
-              })}<br/>`
-            : `<strong>Magnitude:</strong> ${parseFloat(d['Magnitude']).toFixed(
-                1
-              )}<br/>`
-        }
-        <strong>Total Deaths:</strong> ${formatNumber(d['Total Deaths'])}<br/>
-        <strong>Total Affected:</strong> ${formatNumber(
-          d['Total Affected']
-        )}<br/>
+            ? 'Damage'
+            : 'Magnitude'
+        }:</strong> ${formatValue(d[2].mean)}<br/>
+        <strong>Number of Events:</strong> ${formatNumber(d[2].count)}<br/>
         ${
-          d['Disaster Subtype']
-            ? `<strong>Subtype:</strong> ${d['Disaster Subtype']}<br/>`
+          countryInfo['Disaster Subtype']
+            ? `<strong>Subtype:</strong> ${countryInfo['Disaster Subtype']}<br/>`
             : ''
         }
       `;
 
       tooltip.html(content);
 
-      // Calculate tooltip position to prevent going off-screen
+      // Calculate tooltip position
       const tooltipNode = tooltip.node();
       const tooltipRect = tooltipNode.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
@@ -433,31 +436,38 @@ function displayScatterPlot(selectedCountry, disasterType) {
       tooltip.style('left', left + 'px').style('top', top + 'px');
     })
     .on('mouseout', function (event, d) {
-      const eventId =
-        d.DisasterId ||
-        d.id ||
-        `${d['Start Year']}-${d.Longitude}-${d.Latitude}`;
-      if (!top20Disasters.has(eventId)) return;
-
+      // Remove highlight and tooltip
       const isInCountry =
         !selectedCountry ||
-        d.ISO === selectedCountryISO3 ||
-        d['affectedCountries'].includes(selectedCountry);
+        d[0] === selectedCountryISO3 ||
+        (d[2].countryInfo['affectedCountries'] &&
+          d[2].countryInfo['affectedCountries'].includes(selectedCountry));
+
       d3.select(this)
         .style('opacity', isInCountry ? 0.6 : 0.1)
         .style('stroke-width', 0.5);
+
+      tooltip.style('display', 'none').style('opacity', 0);
+    })
+    // Add mouseleave event on the SVG to ensure tooltip is hidden when mouse leaves the chart
+    .on('mouseleave', function () {
       tooltip.style('display', 'none').style('opacity', 0);
     });
+
+  // Add mouseleave event to the SVG container to ensure tooltip is hidden
+  svg.on('mouseleave', function () {
+    tooltip.style('display', 'none').style('opacity', 0);
+  });
 
   // Update labels
   svg
     .select('.y-label')
     .text(
       disasterType === 'Tropical cyclone'
-        ? 'Wind Speed (knots)'
+        ? 'Average Wind Speed per Year (knots)'
         : disasterType === 'Flood'
-        ? 'Total Damage (USD Billions)'
-        : 'Magnitude'
+        ? 'Average Total Damage per Year (USD Billions)'
+        : 'Average Magnitude per Year'
     );
 
   svg
@@ -467,7 +477,7 @@ function displayScatterPlot(selectedCountry, disasterType) {
         disasterType === 'Tropical cyclone' ? 'Hurricane' : disasterType
       } Events ${
         selectedCountryName ? `in ${selectedCountryName}` : 'Worldwide'
-      }`
+      } (Yearly Averages)`
     );
 }
 
