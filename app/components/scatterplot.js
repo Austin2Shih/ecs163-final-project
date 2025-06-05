@@ -3,6 +3,7 @@ import {
   convertIdToName,
   convertNameToISO2,
   convertISO2ToISO3,
+  convertISO2ToId,
 } from '../utils/convertCountryCode.js';
 import { addDisplayUpdateStep } from '../utils/updateDisplay.js';
 
@@ -12,13 +13,18 @@ function aggregateDataByCountry(disasterData, disasterType) {
   if (disasterType === 'Tropical cyclone') {
     processedData = [];
     disasterData.forEach((d) => {
-      if (d.affectedCountries && Array.isArray(d.affectedCountries)) {
+      if (
+        d.affectedCountries &&
+        Array.isArray(d.affectedCountries) &&
+        d.affectedCountries.length > 0
+      ) {
         // Create a copy of the data for each affected country
         d.affectedCountries.forEach((country) => {
           processedData.push({
             ...d,
             ISO: country, // Use the affected country as the primary country
             year: d.year,
+            originalISO: d.ISO, // Keep track of the original country
           });
         });
       } else {
@@ -26,6 +32,7 @@ function aggregateDataByCountry(disasterData, disasterType) {
         processedData.push({
           ...d,
           year: d.year,
+          originalISO: d.ISO,
         });
       }
     });
@@ -34,7 +41,6 @@ function aggregateDataByCountry(disasterData, disasterType) {
     processedData = disasterData.map((d) => ({
       ...d,
       year: d['Start Year'],
-      // Ensure we're using the correct ISO code
       ISO: d.ISO || d['Country'],
     }));
   }
@@ -50,9 +56,12 @@ function aggregateDataByCountry(disasterData, disasterType) {
   const allCombinations = [];
 
   uniqueCountries.forEach((country) => {
-    years.forEach((year) => {
-      allCombinations.push([country, year]);
-    });
+    if (country) {
+      // Only add if country code exists
+      years.forEach((year) => {
+        allCombinations.push([country, year]);
+      });
+    }
   });
 
   // Aggregate data by country and year
@@ -256,11 +265,25 @@ function displayScatterPlot(selectedCountry, disasterType) {
 
   // Filter for selected country
   if (selectedCountry) {
-    aggregatedData = aggregatedData.filter((d) => {
-      // For all disaster types, only use ISO codes for comparison
-      // Since we've normalized the data in aggregateDataByCountry
-      return d[0] === selectedCountryISO3;
-    });
+    if (disasterType === 'Tropical cyclone') {
+      // For hurricanes, check if the country is in the affected countries
+      // We've already expanded the data by affected countries in aggregateDataByCountry
+      const selectedCountryId = convertISO2ToId(selectedCountryISO2);
+      aggregatedData = aggregatedData.filter((d) => {
+        // Check if this data point is for the selected country
+        return (
+          d[0] === selectedCountryISO3 ||
+          (d[2].countryInfo &&
+            d[2].countryInfo.affectedCountries &&
+            d[2].countryInfo.affectedCountries.includes(selectedCountryId))
+        );
+      });
+    } else {
+      // For other disasters, use strict ISO code matching
+      aggregatedData = aggregatedData.filter((d) => {
+        return d[0] === selectedCountryISO3;
+      });
+    }
   }
 
   // Calculate scales using the filtered dataset
