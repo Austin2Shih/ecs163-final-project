@@ -4,7 +4,7 @@ import loadExcelAsJSON from './utils/loadExcelAsJSON.js';
 import displayMap from './components/map.js';
 import displayBarChart from './components/barchart.js';
 import displayLineChart from './components/linechart.js';
-import displayScatterPlot, {
+import {
   displayEarthquakeScatterPlot,
   displayFloodScatterPlot,
   displayHurricaneScatterPlot,
