@@ -113,6 +113,15 @@ export default function displayMap() {
       }`
     );
   });
+  
+// instructions for interactivity
+  svg
+    .append('text')
+    .attr('x', width / 2 + 12)
+    .attr('y', height - margin.bottom / 2 + 4)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '0.875rem')
+    .text("Click a country for more information, drag the slider on the bototm to view a specific year. Feel free to explore the map by zooming and panning.");
 
   const countryTempData = Object.fromEntries(
     temperatureData.map((d) => {
