@@ -12,6 +12,7 @@ import {
 import { initCountryCodeConversionMaps } from './utils/convertCountryCode.js';
 import filterUnusedDisasters from './utils/filterUnusedDisasters.js';
 import initYearSlider from './components/yearSlider.js';
+import { startYearAnimation } from './components/autoYearAnimation.js';
 
 Promise.all([
   loadExcelAsJSON('./data/em-dat.xlsx'),
@@ -57,4 +58,6 @@ function startApp([
   displayHurricaneScatterPlot();
   displayFloodScatterPlot();
   displayBarChart();
+
+  startYearAnimation();
 }
