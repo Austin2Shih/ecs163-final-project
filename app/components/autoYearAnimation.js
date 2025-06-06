@@ -1,153 +1,8 @@
 import appState from '../appState.js';
-import { updateYearDisplay } from '../utils/updateDisplay.js';
+import { updateDisplay, updateYearDisplay } from '../utils/updateDisplay.js';
 
-export function startAutoYearAnimation() {
-    
-    //hide ui elements during animaiton
-    hideSliderAndCharts();
-    
-    showAnimationIndicator();
-    
-    appState.isAnimating = true;
-    appState.selectedYear = 1960;
-    
-    // start animation loop
-    animateYears();
-}
-
-function hideSliderAndCharts() {
-    //hiding year slider and charts during animation
-    const yearSlider = document.querySelector('.year-slider-container');
-    if (yearSlider) {
-        yearSlider.style.opacity = '0.3';
-        yearSlider.style.pointerEvents = 'none';
-    }
-    
-    //hide charts during animation for less distraction
-    const charts = document.querySelectorAll('.line-chart-container, .bar-chart-container, .right-container');
-    charts.forEach(chart => {
-        chart.style.opacity = '0';
-    });
-}
-
-function showSliderAndCharts() {
-    //year slider after information
-    const yearSlider = document.querySelector('.year-slider-container');
-    if (yearSlider) {
-        yearSlider.style.opacity = '1';
-        yearSlider.style.pointerEvents = 'auto';
-    }
-    
-    //show charts again after animation
-    const charts = document.querySelectorAll('.line-chart-container, .bar-chart-container, .right-container');
-    charts.forEach(chart => {
-        chart.style.opacity = '1';
-    });
-}
-
-function showAnimationIndicator() {
-    //annotation overlay with event and description
-    const indicator = document.createElement('div');
-    indicator.id = 'year-animation-indicator';
-    indicator.innerHTML = `
-        <div class="annotation-content">
-            <div class="current-year" id="current-year-display">1960</div>
-            <div class="annotation-text" id="annotation-text">
-                Let's explore natural disasters and big events in climate change!
-            </div>
-            <button id="skip-animation-btn">Skip Animation</button>
-        </div>
-    `;
-    
-    indicator.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #000000;
-        color: white;
-        padding: 25px;
-        border-radius: 15px;
-        z-index: 1000;
-        font-family: Arial, sans-serif;
-        max-width: 400px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        border-left: 4px solid rgb(96, 202, 219);
-    `;
-    
-    //styling for the annotations
-    const style = document.createElement('style');
-    style.textContent = `
-        #year-animation-indicator .current-year {
-            font-size: 2.2em;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color:rgb(96, 202, 219);
-            text-align: center;
-        }
-        
-        #year-animation-indicator .annotation-text {
-            font-size: 1em;
-            line-height: 1.5;
-            margin-bottom: 20px;
-            text-align: left;
-            min-height: 60px;
-        }
-        
-        .annotation-highlight {
-            background: rgba(96, 202, 219, 0.3);
-            padding: 2px 4px;
-            border-radius: 3px;
-            color:rgb(96, 202, 219);
-            font-weight: bold;
-        }
-        
-        #year-animation-indicator button {
-            background: #ff4757;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9em;
-            width: 100%;
-            transition: background 0.3s ease;
-        }
-        
-        #year-animation-indicator button:hover {
-            background: #ff3742;
-        }
-        
-        .annotation-special {
-            background: rgba(96, 202, 219, 0.1);
-            border: 1px solid rgba(96, 202, 219, 0.3);
-            border-radius: 8px;
-            padding: 15px;
-            animation: glow 2s ease-in-out;
-        }
-        
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(96, 202, 219, 0.3); }
-            50% { box-shadow: 0 0 20px rgba(96, 202, 219, 0.6); }
-        }
-    `;
-    
-    document.head.appendChild(style);
-    document.body.appendChild(indicator);
-    
-    //skip button if users dont want to go through animation
-    document.getElementById('skip-animation-btn').addEventListener('click', () => {
-        skipAnimation();
-    });
-}
-
-function hideAnimationIndicator() {
-    const indicator = document.getElementById('year-animation-indicator');
-    if (indicator) {
-        indicator.remove();
-    }
-}
-//major disasters that will show up
-const disasterAnnotations = {
+//major disasters and climate events that will show up
+const annotations = {
     1960: "Let's explore natural disasters and big events in climate change!",
     1962: "Sep - Rachel Carson published her famous book, Silent Spring, triggering large movements in environmental conservation efforts.",
     1969: "The Ohio Cuyahoga River catches on fire, brings major awareness to environmental issues.",
@@ -175,80 +30,325 @@ const disasterAnnotations = {
     2023: "Feb 6 - An earthquake with a magnitude of 7.8 hit south-central Turkey, causing tens of thousands of casualties in Turkey and Syria and over 100,000 buildings to be damaged. This earthquake left 1.9 million people to be displaced."
 };
 
-function animateYears() {
-    if (!appState.isAnimating) return;
+const annotatedYears = Object.keys(annotations).map(year => parseInt(year)).sort((a, b) => a - b);
+let yearIndex = 0;
+
+export function startAnimation() {
     
-    const currentYear = appState.selectedYear;
-    const endYear = 2024;
+    //hide ui elements during animaiton
+    hideSliderAndCharts();
+    createAnnotation();
+    yearIndex = 0;
     
-    //update the year display
+    appState.isAnimating = false;
+    appState.selectedYear = annotatedYears[yearIndex];
+    
+    updateCurrentDisplay();
+}
+
+function hideSliderAndCharts() {
+    //hiding year slider and charts during animation
+    const yearSlider = document.querySelector('.year-slider-container');
+    if (yearSlider) {
+        yearSlider.style.opacity = '0.3';
+        yearSlider.style.pointerEvents = 'none';
+    }
+    
+    //hide charts on the right during animation for less distraction
+    const charts = document.querySelectorAll('.right-container');
+    charts.forEach(chart => {
+        chart.style.opacity = '0';
+    });
+}
+
+function showSliderAndCharts() {
+    //year slider after information
+    const yearSlider = document.querySelector('.year-slider-container');
+    if (yearSlider) {
+        yearSlider.style.opacity = '1';
+        yearSlider.style.pointerEvents = 'auto';
+    }
+    
+    //show charts again after animation
+    const rightContainer = document.querySelector('.right-container');
+    if (rightContainer) {
+        rightContainer.style.opacity = '1';
+    }
+
+    const hiddenElements = document.querySelectorAll('[data-hidden-during-navigation="true"]');
+    hiddenElements.forEach(element => {
+        element.style.display = '';
+        element.removeAttribute('data-hidden-during-navigation');
+    });
+    
+    const charts = document.querySelectorAll('.line-chart-container, .bar-chart-container, .chart, canvas');
+    charts.forEach(chart => {
+        chart.style.opacity = '1';
+        chart.style.display = '';
+    });
+}
+
+function createAnnotation(){
+    const annotationInfo = document.createElement('div');
+    annotationInfo.id = 'event-annotation-content';
+    annotationInfo.innerHTML = `
+        <h3 id="current-year-display">${annotatedYears[0]}</h3>
+        <p class="event-counter" id="event-counter">Event 1 of ${annotatedYears.length}</p>
+        <div class="annotation-text" id="annotation-text">
+            Use the controls below to explore natural disasters and climate events!
+        </div>
+        <div class="navigation-buttons">
+            <button id="prev-btn" class="nav-btn">
+                <span class="nav-arrow">←</span> Previous Event
+            </button>
+            <button id="next-btn" class="nav-btn">
+                Next Event <span class="nav-arrow">→</span>
+            </button>
+            <button id="exit-nav-btn" class="exit-btn">Exit Navigation</button>
+        </div>
+    `;
+    annotationInfo.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #FFFFFF;
+        color: white;
+        padding: 25px;
+        border-radius: 15px;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+        max-width: 450px;
+    `;
+    
+    document.body.appendChild(annotationInfo);
+    const style = document.createElement('style');
+    style.id = 'annotation-styles';
+    style.textContent = `
+        #event-annotation-content {
+            padding: 20px 0 30px 0;
+            margin-bottom: 20px;
+        }
+        
+        #event-annotation-content h3 {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: rgb(96, 202, 219);
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+        
+        #event-annotation-content .event-counter {
+            font-size: 0.95em;
+            color: #666;
+            margin: 0 0 20px 0;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        #event-annotation-content .annotation-text {
+            font-size: 1em;
+            line-height: 1.7;
+            margin: 0 0 20px 0;
+            padding: 15px;
+            background: white;
+            color:black;
+        }
+        
+        .annotation-highlight {
+            background: rgba(96, 202, 219, 0.2);
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: rgb(96, 202, 219);
+            font-weight: bold;
+        }
+        
+        .annotation-special .annotation-text {
+            background: rgba(96, 202, 219, 0.08);
+            border-left: 4px solid rgb(96, 202, 219);
+            box-shadow: 0 2px 8px rgba(96, 202, 219, 0.1);
+        }
+        
+        #event-annotation-content .navigation-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        #event-annotation-content .nav-btn {
+            background: rgb(96, 202, 219);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        #event-annotation-content .nav-btn:hover {
+            background: rgb(76, 182, 199);
+            transform: translateY(-1px);
+        }
+        
+        #event-annotation-content .nav-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #event-annotation-content .nav-arrow {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        #event-annotation-content .exit-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.3s ease;
+            flex: 0 0 auto;
+            min-width: 100px;
+        }
+        
+        #event-annotation-content .exit-btn:hover {
+            background: #ff3742;
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.getElementById('prev-btn').addEventListener('click', () => {
+        goToPrev();
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+        goToNext();
+    });
+
+    document.getElementById('exit-nav-btn').addEventListener('click', () => {
+        exit();
+    });
+
+    updateButtons();
+}
+
+function hideAnnotation(){
+    const info = document.getElementById('event-annotation-content');
+    if (info) {
+        info.remove();
+    }
+    const styles = document.getElementById('annotation-styles');
+    if (styles) {
+        styles.remove();
+    }
+}
+function goToPrev() {
+    if (yearIndex > 0) {
+        yearIndex--;
+        appState.selectedYear = annotatedYears[yearIndex];
+        updateDisplay();
+        updateCurrentDisplay();
+        updateButtons();
+    }
+}
+function goToNext() {
+    if (yearIndex < annotatedYears.length - 1) {
+        yearIndex++;
+        appState.selectedYear = annotatedYears[yearIndex];
+        updateDisplay();
+        updateCurrentDisplay();
+        updateButtons();
+    }
+    else {
+        updateDisplay();
+        updateCurrentDisplay();
+        updateButtons();
+        setTimeout(() => {
+            exit();
+        }, 2000);
+    }
+}
+
+function updateCurrentDisplay() {
+    const current = appState.selectedYear;
     const yearDisplay = document.getElementById('current-year-display');
     const annotationText = document.getElementById('annotation-text');
-    
+    const eventCounter = document.getElementById('event-counter');
+
     if (yearDisplay) {
-        yearDisplay.textContent = currentYear;
+        yearDisplay.textContent = current;
     }
     
     //update annotation text for special events
     if (annotationText) {
-        const annotation = disasterAnnotations[currentYear];
+        const annotation = annotations[current];
         if (annotation) {
             annotationText.innerHTML = annotation;
-            annotationText.classList.add('annotation-special');
-        } else {
-            annotationText.innerHTML = `Tracking natural disasters and climate change events worldwide in ${currentYear}...`;
-            annotationText.classList.remove('annotation-special');
+            const content = document.getElementById('event-annotation-content');
+            if (content) {
+                content.classList.add('annotation-special');
+            }
+        } 
+        else {
+            annotationText.innerHTML = `Major event in ${current}`;
+            const content = document.getElementById('event-annotation-content');
+            if (content) {
+                content.classList.add('annotation-special');
+            }
         }
+    }
+
+    if (eventCounter) {
+        const eventNum = yearIndex + 1;
+        eventCounter.textContent = `Event ${eventNum} of ${annotatedYears.length}`;
     }
 
     updateYearDisplay();
 
     const slider = document.querySelector('#year-slider, input[type="range"]');
     if (slider) {
-        slider.value = currentYear;
-    }
-    
-    //determine pause duration on whether there is major natural disaster in that year
-    const annotation = disasterAnnotations[currentYear];
-    let pauseDuration;
-    
-    if (annotation) {
-        //major disaster - 3 year pause
-        pauseDuration = 3000;
-    } else {
-        // regular years - 400 ms delay
-        pauseDuration = appState.animationSpeed || 400;
-    }
-    
-    //continue animation
-    if (currentYear < endYear) {
-        appState.selectedYear++;
-        setTimeout(() => animateYears(), pauseDuration);
-    } else {
-        completeAnimation();
+        slider.value = current;
     }
 }
 
-function completeAnimation() {
-    appState.isAnimating = false;
-    hideAnimationIndicator();
+function updateButtons() {
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+
+    if (prevBtn) {
+        prevBtn.disabled = yearIndex <= 0;
+    }
+    if (nextBtn) {
+        if (yearIndex >= annotatedYears.length - 1) {
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = 'Complete! Press Exit! <span class="nav-arrow"></span>';
+        }
+        else {
+            nextBtn.disabled = false;
+            nextBtn.innerHTML = 'Next Event <span class="nav-arrow">→</span>';
+        }
+    }
+}
+
+function exit() {
+    hideAnnotation();
     showSliderAndCharts();
-    //select year as 2024 at end of animation so map doesnt get cluttered
-    appState.selectedYear = 2024;
-    updateYearDisplay();
-    
+    updateYearDisplay();  
 }
 
-function skipAnimation() {
-    appState.isAnimating = false;
-    appState.selectedYear = 2024;
-    completeAnimation();
-    updateYearDisplay();
-}
-
-//auto start fuction
-export function autoStartYearAnimation() {
+// start fuction
+export function startYearAnimation() {
     setTimeout(() => {
-        startAutoYearAnimation();
+        startAnimation();
     }, 2000); //starts 2 seconds after page loaded
 }
