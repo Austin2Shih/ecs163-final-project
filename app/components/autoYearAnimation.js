@@ -58,6 +58,7 @@ function hideSliderAndCharts() {
     const charts = document.querySelectorAll('.right-container');
     charts.forEach(chart => {
         chart.style.opacity = '0';
+        chart.style.pointerEvents = 'none';
     });
 }
 
@@ -350,5 +351,5 @@ function exit() {
 export function startYearAnimation() {
     setTimeout(() => {
         startAnimation();
-    }, 2000); //starts 2 seconds after page loaded
+    }, 100); //starts 2 seconds after page loaded
 }
