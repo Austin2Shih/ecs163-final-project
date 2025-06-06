@@ -3,7 +3,7 @@ import { updateDisplay, updateYearDisplay } from '../utils/updateDisplay.js';
 
 //major disasters and climate events that will show up
 const annotations = {
-    1960: "Let's explore natural disasters and big events in climate change!",
+    1960: "We are exploring how <span class='annotation-highlight'>climate change affects natural disasters in terms of frequency and severity</span>! Let's explore natural disasters and big events in climate change! Go through the slideshow or press exit to <span class='annotation-highlight'>unlock interactive features</span>!",
     1962: "Sep - Rachel Carson published her famous book, Silent Spring, triggering large movements in environmental conservation efforts.",
     1969: "The Ohio Cuyahoga River catches on fire, brings major awareness to environmental issues.",
     1970: "Apr 22 - <span class='annotation-highlight'>First US Earth Day</span> to increase awareness for environmental conservation. Nov 12-13 - <span class='annotation-highlight'>Bhola Cyclone</span> happened in Bangladesh with winds speed reaching 205 km/h, equivalent to a Category 4 major hurricane. Before the cyclone reached land, a 35-foot (10.6 m) storm caused widespread flooding.",
@@ -27,7 +27,8 @@ const annotations = {
     2017: "Apr 22 - <span class='annotation-highlight'>March for Science</span> was held on Earth Day with over a million participants worldwide, encouraging scientifically informed policymaking. Sep 20 - <span class='annotation-highlight'>Hurricane Maria</span> struck Puerto Rico and caused 41 inches of rainfall, which led to flooding. It caused $98 billion in damages.",
     2019: "2019-2020 - Over 80 thousand fires were reported in the Amazon Rainforest, and over 3 million hectares were burned.",
     2020: "2020 and 2016 are tied as the <span class='annotation-highlight'>hottest years</span> on record. Earth's global average surface temp continues to warm due to human activities.",
-    2023: "Feb 6 - An earthquake with a magnitude of 7.8 hit south-central Turkey, causing tens of thousands of casualties in Turkey and Syria and over 100,000 buildings to be damaged. This earthquake left 1.9 million people to be displaced."
+    2023: "Feb 6 - An earthquake with a magnitude of 7.8 hit south-central Turkey, causing tens of thousands of casualties in Turkey and Syria and over 100,000 buildings to be damaged. This earthquake left 1.9 million people to be displaced.",
+    2024: "Click on a country to explore data specific to it or drag the slider to see the data for different years!"
 };
 
 const annotatedYears = Object.keys(annotations).map(year => parseInt(year)).sort((a, b) => a - b);
@@ -105,7 +106,7 @@ function createAnnotation(){
             <button id="next-btn" class="nav-btn">
                 Next Event <span class="nav-arrow">→</span>
             </button>
-            <button id="exit-nav-btn" class="exit-btn">Exit Navigation</button>
+            <button id="exit-nav-btn" class="exit-btn">Exit Slideshow</button>
         </div>
     `;
     annotationInfo.style.cssText = `
