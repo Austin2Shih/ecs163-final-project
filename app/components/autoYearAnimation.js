@@ -95,7 +95,7 @@ function createAnnotation(){
         <h3 id="current-year-display">${annotatedYears[0]}</h3>
         <p class="event-counter" id="event-counter">Event 1 of ${annotatedYears.length}</p>
         <div class="annotation-text" id="annotation-text">
-            Use the controls below to explore natural disasters and climate events!
+            Use the buttons below to explore natural disasters and climate events!
         </div>
         <div class="navigation-buttons">
             <button id="prev-btn" class="nav-btn">
@@ -139,7 +139,7 @@ function createAnnotation(){
         
         #event-annotation-content .event-counter {
             font-size: 0.95em;
-            color: #666;
+            color: black;
             margin: 0 0 20px 0;
             text-align: center;
             font-style: italic;
@@ -158,7 +158,7 @@ function createAnnotation(){
             background: rgba(96, 202, 219, 0.2);
             padding: 2px 4px;
             border-radius: 3px;
-            color: rgb(96, 202, 219);
+            color: rgb(77, 183, 200);
             font-weight: bold;
         }
         
@@ -176,9 +176,9 @@ function createAnnotation(){
         }
         
         #event-annotation-content .nav-btn {
+            border: none;
             background: rgb(96, 202, 219);
             color: white;
-            border: none;
             padding: 10px 14px;
             border-radius: 6px;
             cursor: pointer;
@@ -210,8 +210,8 @@ function createAnnotation(){
         
         #event-annotation-content .exit-btn {
             background: #ff4757;
-            color: white;
             border: none;
+            color: white;
             padding: 10px 14px;
             border-radius: 6px;
             cursor: pointer;
