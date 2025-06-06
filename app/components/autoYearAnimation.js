@@ -351,5 +351,5 @@ function exit() {
 export function startYearAnimation() {
     setTimeout(() => {
         startAnimation();
-    }, 100); //starts 2 seconds after page loaded
+    }, 100);
 }
